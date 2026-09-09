@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Storecipe</title>
-    <link rel="stylesheet" href="dist/style.css?v=20260608c" />
+    <link rel="stylesheet" href="dist/style.css?v=20260909a" />
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -33,13 +33,15 @@
             </button>
             <button
               id="settingsButton"
-              class="button button--secondary app__settings-button hidden"
+              class="button button--secondary app__settings-button app__tool-button hidden"
               type="button"
               aria-expanded="false"
               aria-controls="authPanel"
-              data-i18n="header.settings"
+              data-i18n-aria-label="header.settings"
+              aria-label="Settings"
             >
-              Settings
+              <span aria-hidden="true">&#9881;</span>
+              <span class="app__tool-button-label" data-i18n="header.settings">Settings</span>
             </button>
           </div>
         </div>
@@ -201,7 +203,7 @@
             <div class="recipe-list-skeleton__body">
               <div class="recipe-list-skeleton__line recipe-list-skeleton__line--title"></div>
               <div class="recipe-list-skeleton__line recipe-list-skeleton__line--meta"></div>
-              <div class="recipe-list-skeleton__button"></div>
+              <div class="recipe-list-skeleton__line recipe-list-skeleton__line--chips"></div>
             </div>
           </article>
           <article class="recipe-list-skeleton" aria-hidden="true">
@@ -209,7 +211,7 @@
             <div class="recipe-list-skeleton__body">
               <div class="recipe-list-skeleton__line recipe-list-skeleton__line--title"></div>
               <div class="recipe-list-skeleton__line recipe-list-skeleton__line--meta"></div>
-              <div class="recipe-list-skeleton__button"></div>
+              <div class="recipe-list-skeleton__line recipe-list-skeleton__line--chips"></div>
             </div>
           </article>
         </div>
@@ -495,6 +497,6 @@
     <script defer src="src/js/features/recipeRenderer.js"></script>
     <script defer src="src/js/features/friendsManager.js"></script>
     <script defer src="src/js/services/supabaseServices.js"></script>
-    <script defer src="app.js?v=20260608c"></script>
+    <script defer src="app.js?v=20260909a"></script>
   </body>
 </html>

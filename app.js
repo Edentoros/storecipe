@@ -2435,6 +2435,15 @@
     if (recipe) showDetail(recipe);
   });
 
+  // Cards are role="button" tabindex="0" — mirror click for keyboard users.
+  recipeList.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const card = event.target.closest("article.recipe-card");
+    if (!card || event.target !== card) return;
+    event.preventDefault();
+    card.click();
+  });
+
   const inlineEditManager = createInlineEditManager({
     dom: { detailContent, searchInput },
     state,

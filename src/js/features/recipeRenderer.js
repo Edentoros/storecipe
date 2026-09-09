@@ -27,6 +27,14 @@ function createRecipeRenderer({
   const tDifficulty = i18n && i18n.getDifficultyLabel ? (n) => i18n.getDifficultyLabel(n) : (helpers.getDifficultyLabel || ((n) => String(n)));
   const tFormatDuration = i18n && i18n.formatDuration ? (m) => i18n.formatDuration(m) : formatDuration;
 
+  const svgIcon = (paths) =>
+    `<svg class="recipe-card__chip-icon" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${paths}</svg>`;
+  const META_ICONS = {
+    time: svgIcon('<circle cx="8" cy="8" r="6.25"/><path d="M8 4.5V8l2.4 1.6"/>'),
+    serves: svgIcon('<path d="M2.25 7.4h11.5a5.75 5.75 0 0 1-11.5 0Z"/><path d="M6 4.9c0-1 1-1.3 1-2.3M9.2 4.9c0-1 1-1.3 1-2.3"/>'),
+    difficulty: svgIcon('<path d="M3 13.2V9.6"/><path d="M8 13.2V6.2"/><path d="M13 13.2V2.8"/>')
+  };
+
   function patchRecipeCardImage(recipe) {
     if (!recipe?.id || !recipe?._resolvedImageUrl) return;
     const card = recipeList.querySelector(`article.recipe-card[data-id="${recipe.id}"]`);
@@ -150,6 +158,11 @@ function createRecipeRenderer({
           const article = document.createElement("article");
           article.className = "recipe-card";
           article.dataset.id = recipe.id || "";
+          // The whole card is the click target — no separate "View" button needed.
+          article.dataset.action = "view";
+          article.tabIndex = 0;
+          article.setAttribute("role", "button");
+          article.setAttribute("aria-label", title);
 
           const favButton = document.createElement("button");
           favButton.className = "recipe-card__fav-button" + (recipe.is_favourite ? " recipe-card__fav-button--active" : "");
@@ -216,35 +229,23 @@ function createRecipeRenderer({
           const totalTimeValue = totalMinutes > 0 ? tFormatDuration(totalMinutes) : storedTotalTime;
           const servesValue = String(recipe.serves ?? recipe.servings ?? "").trim();
           const difficultyNum = normalizeDifficulty(recipe.difficulty, 4);
-          const difficultyLevel = `${difficultyNum} — ${tDifficulty(difficultyNum)}`;
           const metaItems = [
-            { label: t("card.totalTime"), value: totalTimeValue },
-            { label: t("card.serves"), value: servesValue },
-            { label: t("card.difficulty"), value: difficultyLevel }
+            { icon: META_ICONS.time, label: t("card.totalTime"), value: totalTimeValue },
+            { icon: META_ICONS.serves, label: t("card.serves"), value: servesValue },
+            { icon: META_ICONS.difficulty, label: t("card.difficulty"), value: tDifficulty(difficultyNum) }
           ].filter((item) => Boolean(item.value));
 
           if (metaItems.length) {
             const meta = document.createElement("div");
             meta.className = "recipe-card__meta";
-            metaItems.forEach((item) => {
-              const line = document.createElement("p");
-              line.className = "recipe-card__meta-item";
-              const label = document.createElement("strong");
-              label.textContent = `${item.label}:`;
-              line.appendChild(label);
-              line.append(` ${item.value}`);
-              meta.appendChild(line);
-            });
+            meta.innerHTML = metaItems
+              .map(
+                (item) =>
+                  `<span class="recipe-card__chip">${item.icon}<span class="sr-only">${escapeHtml(item.label)}: </span>${escapeHtml(String(item.value))}</span>`
+              )
+              .join("");
             body.appendChild(meta);
           }
-
-          const button = document.createElement("button");
-          button.className = "button";
-          button.type = "button";
-          button.dataset.action = "view";
-          button.dataset.id = recipe.id || "";
-          button.textContent = t("card.view");
-          body.appendChild(button);
 
           article.appendChild(body);
           recipeList.appendChild(article);
