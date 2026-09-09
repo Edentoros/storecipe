@@ -34,6 +34,8 @@
     getDifficultyLabel,
     normalizeTheme,
     normalizeLanguage,
+    renderIngredientListHtml,
+    renderMethodListHtml,
     withTimeout,
     getDirectImageUrl,
     isValidHttpUrl,
@@ -779,7 +781,9 @@
       formatDuration,
       getDisplayImageUrl,
       getDirectImageUrl,
-      scaleIngredients
+      scaleIngredients,
+      renderIngredientListHtml,
+      renderMethodListHtml
     },
     getSignedImageUrl,
     setDetailOpen,
@@ -2510,10 +2514,9 @@
       const contentEl = section?.querySelector("[data-field-content='ingredients']");
       if (contentEl) {
         const scaled = scaleIngredients(origIngredients, origServes, current);
-        contentEl.innerHTML = scaled.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
-          const safe = l.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-          return safe;
-        }).join("<br />");
+        // Must match the detail renderer's structure, or scaling would replace
+        // the ingredient list with flat text.
+        contentEl.innerHTML = renderIngredientListHtml(scaled);
       }
       return;
     }

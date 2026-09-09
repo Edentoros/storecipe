@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Storecipe</title>
-    <link rel="stylesheet" href="dist/style.css?v=20260909c" />
+    <link rel="stylesheet" href="dist/style.css?v=20260909d" />
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -397,7 +397,10 @@
       </section>
 
       <section id="recipeDetail" class="panel panel--detail hidden" aria-live="polite">
-        <button id="closeDetail" class="button button--secondary" type="button" data-i18n="detail.back">Back to List</button>
+        <button id="closeDetail" class="button button--ghost recipe-detail__back" type="button">
+          <span class="recipe-detail__back-arrow" aria-hidden="true">&#8592;</span>
+          <span data-i18n="detail.back">Back to List</span>
+        </button>
         <div id="detailContent"></div>
       </section>
 
@@ -497,6 +500,6 @@
     <script defer src="src/js/features/recipeRenderer.js"></script>
     <script defer src="src/js/features/friendsManager.js"></script>
     <script defer src="src/js/services/supabaseServices.js"></script>
-    <script defer src="app.js?v=20260909c"></script>
+    <script defer src="app.js?v=20260909d"></script>
   </body>
 </html>

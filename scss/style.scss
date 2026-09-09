@@ -1967,6 +1967,215 @@ button:active:not(:disabled) {
   white-space: inherit;
   word-break: inherit;
 }
+
+/* ── Detail view ────────────────────────────────────────────────────────
+   Must follow .inline-edit-trigger: `all: unset` resets display to inline,
+   and these share the same element and specificity. */
+.recipe-detail__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0;
+  margin-bottom: 0.85rem;
+  padding: 0.4rem 0.75rem 0.4rem 0.55rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.recipe-detail__back-arrow {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+/* Stat row — label above value, so the value carries the emphasis. */
+.recipe-detail-card .recipe-detail-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.75rem;
+  margin-top: 0.9rem;
+  padding: 0.8rem 0;
+  border-top: 1px solid #eceff3;
+  border-bottom: 1px solid #eceff3;
+}
+.recipe-detail-card .recipe-detail-card__meta p {
+  margin: 0;
+}
+.recipe-stat {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  text-align: left;
+}
+.recipe-stat__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #829ab1;
+}
+.recipe-stat__value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2933;
+}
+
+.recipe-detail-card section h3 {
+  font-size: 1.12rem;
+  margin-bottom: 0.55rem;
+  letter-spacing: -0.01em;
+}
+
+.ingredient-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.ingredient-list__item {
+  position: relative;
+  padding-left: 1.15rem;
+  line-height: 1.45;
+}
+.ingredient-list__item::before {
+  content: "";
+  position: absolute;
+  left: 0.15rem;
+  top: 0.62em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #c8d3de;
+}
+.ingredient-list__subhead {
+  font-weight: 700;
+  color: #334e68;
+  font-size: 0.92rem;
+  margin-top: 0.55rem;
+}
+.ingredient-list__subhead:first-child {
+  margin-top: 0;
+}
+
+.method-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: method-step;
+  display: grid;
+  gap: 0.75rem;
+  max-width: 62ch;
+}
+.method-list__step {
+  counter-increment: method-step;
+  position: relative;
+  padding-left: 2.2rem;
+  line-height: 1.55;
+}
+.method-list__step::before {
+  content: counter(method-step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: #eef2f7;
+  color: #334e68;
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.method-list__prose {
+  max-width: 62ch;
+  line-height: 1.55;
+}
+
+/* The base `button` rule sets color:#fff, and the scaler only overrode the
+   background — so these glyphs were white on white. */
+.serving-scaler__btn {
+  color: #334e68;
+}
+
+.recipe-detail-card .recipe-detail-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.35rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eceff3;
+}
+.recipe-detail-card .recipe-detail-card__actions .button {
+  margin-top: 0;
+}
+/* Destructive action separated from the constructive ones and de-emphasised. */
+.recipe-detail-card .recipe-detail-card__delete-button {
+  margin-left: auto;
+  color: #b3261e;
+}
+.recipe-detail-card .recipe-detail-card__delete-button:hover,
+.recipe-detail-card .recipe-detail-card__delete-button:focus {
+  background: #fdecea;
+  color: #8c1d18;
+}
+
+body.theme-dark .recipe-detail-card .recipe-detail-card__meta,
+body.theme-dark .recipe-detail-card .recipe-detail-card__actions {
+  border-color: #243b53;
+}
+body.theme-dark .recipe-stat__value {
+  color: #f0f4f8;
+}
+body.theme-dark .ingredient-list__item::before {
+  background: #486581;
+}
+body.theme-dark .ingredient-list__subhead {
+  color: #bcccdc;
+}
+body.theme-dark .method-list__step::before {
+  background: #243b53;
+  color: #bcccdc;
+}
+body.theme-dark .serving-scaler__btn {
+  color: #bcccdc;
+}
+body.theme-dark .recipe-detail-card .recipe-detail-card__delete-button {
+  color: #ef6f6c;
+}
+body.theme-dark .recipe-detail-card .recipe-detail-card__delete-button:hover,
+body.theme-dark .recipe-detail-card .recipe-detail-card__delete-button:focus {
+  background: #4a1c1c;
+  color: #ffb4ab;
+}
+
+/* Was text-align:right + nowrap, which split the header: left-aligned title
+   with the date and category badge floating off to the right edge. */
+.recipe-detail-card .recipe-detail-card__date {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: left;
+  white-space: normal;
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  color: #627d98;
+}
+.recipe-detail-card .recipe-detail-card__image--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.recipe-detail-card .recipe-detail-card__image--placeholder::after {
+  content: "";
+  width: 44px;
+  height: 44px;
+  opacity: 0.4;
+  background: no-repeat center / contain
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237c94ab' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 11h18a9 9 0 0 1-18 0Z'/%3E%3Cpath d='M9 7c0-1.5 1.5-2 1.5-3.5'/%3E%3Cpath d='M14 7c0-1.5 1.5-2 1.5-3.5'/%3E%3C/svg%3E");
+}
 .password-requirements {
   display: flex;
   flex-wrap: wrap;

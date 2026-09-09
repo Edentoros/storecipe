@@ -33,6 +33,45 @@ function normalizeTheme(value) {
   return "light";
 }
 
+/**
+ * Recipe bodies are stored as newline-separated plain text. These turn that into
+ * real list markup so ingredients and steps are scannable while cooking.
+ * Shared by the detail renderer and the serving scaler, which rewrites the
+ * ingredient block in place and must emit identical structure.
+ */
+function renderIngredientListHtml(text) {
+  const lines = String(text ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (!lines.length) return "";
+  const items = lines.map((line) => {
+    // "For the sauce:" style group headings, not actual ingredients.
+    const isSubhead = line.endsWith(":") && line.length <= 60;
+    const cls = isSubhead ? "ingredient-list__subhead" : "ingredient-list__item";
+    return `<li class="${cls}">${escapeHtml(line)}</li>`;
+  });
+  return `<ul class="ingredient-list">${items.join("")}</ul>`;
+}
+
+function renderMethodListHtml(text) {
+  const lines = String(text ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (!lines.length) return "";
+  // A single blob of prose isn't a step list — don't force a "1." onto it.
+  if (lines.length === 1) {
+    return `<p class="method-list__prose">${escapeHtml(lines[0])}</p>`;
+  }
+  const items = lines.map((line) => {
+    // Strip stored numbering so the <ol> counter doesn't double up ("1. 1. Heat…").
+    const cleaned = line.replace(/^\s*\d{1,2}\s*[.)]\s+/, "");
+    return `<li class="method-list__step">${escapeHtml(cleaned)}</li>`;
+  });
+  return `<ol class="method-list">${items.join("")}</ol>`;
+}
+
 function normalizeLanguage(value) {
   const v = String(value || "").toLowerCase();
   if (v === "ru") return "ru";
@@ -264,6 +303,8 @@ window.StorecipeHelpers = {
   getDifficultyLabel,
   normalizeTheme,
   normalizeLanguage,
+  renderIngredientListHtml,
+  renderMethodListHtml,
   withTimeout,
   getDirectImageUrl,
   isValidHttpUrl,

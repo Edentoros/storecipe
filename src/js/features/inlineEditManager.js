@@ -436,6 +436,17 @@
         const targetElement = event.target instanceof HTMLElement ? event.target : null;
         if (!targetElement) return;
 
+        // Ingredients/method/notes bodies are div[role=button] (a <button> can't
+        // legally contain a list), so they need Enter/Space wired up by hand.
+        if (event.key === "Enter" || event.key === " ") {
+          const trigger = targetElement.closest("[data-action='inline-edit-field'][role='button']");
+          if (trigger instanceof HTMLElement && targetElement === trigger) {
+            event.preventDefault();
+            startInlineDetailFieldEdit(trigger.dataset.field || "");
+            return;
+          }
+        }
+
         const inlineEditor = targetElement.closest(".recipe-inline-editor");
         if (!(inlineEditor instanceof HTMLElement)) return;
 

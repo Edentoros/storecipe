@@ -17,7 +17,9 @@ function createRecipeRenderer({
     formatDuration,
     getDisplayImageUrl,
     getDirectImageUrl,
-    scaleIngredients
+    scaleIngredients,
+    renderIngredientListHtml,
+    renderMethodListHtml
   } = helpers;
   const t = i18n ? (key, params) => i18n.t(key, params) : (key) => key;
   const tCategory = i18n && i18n.formatCategory ? (v) => i18n.formatCategory(v) : (v) => {
@@ -302,12 +304,17 @@ function createRecipeRenderer({
         { label: t("detail.metaServes"), value: toMetaText(serves) },
         { label: t("detail.metaDifficulty"), value: toMetaText(difficulty), field: "difficulty", editable: true, editAria: t("detail.editDifficulty") }
       ].filter((item) => Boolean(item.value));
+      // Stat row: label small and muted above a prominent value. The old
+      // "**Label:** value" put the emphasis on the word nobody reads.
       const renderMetaItem = (item) => {
+        const inner =
+          `<span class="recipe-stat__label">${escapeHtml(item.label)}</span>` +
+          `<span class="recipe-stat__value"${item.field ? ` data-field-content="${item.field}"` : ""}>${item.value}</span>`;
         if (isOwner && item.editable && item.field) {
           const ariaLabel = item.editAria || item.label;
-          return `<p class="recipe-detail-card__meta-item recipe-detail-card__meta-item--editable"><button class="inline-edit-trigger" data-action="inline-edit-field" data-field="${item.field}" type="button" aria-label="${escapeHtml(ariaLabel)}"><strong>${escapeHtml(item.label)}:</strong> <span data-field-content="${item.field}">${item.value}</span></button></p>`;
+          return `<p class="recipe-detail-card__meta-item recipe-detail-card__meta-item--editable"><button class="inline-edit-trigger recipe-stat" data-action="inline-edit-field" data-field="${item.field}" type="button" aria-label="${escapeHtml(ariaLabel)}">${inner}</button></p>`;
         }
-        return `<p class="recipe-detail-card__meta-item"><strong>${escapeHtml(item.label)}:</strong> ${item.value}</p>`;
+        return `<p class="recipe-detail-card__meta-item"><span class="recipe-stat">${inner}</span></p>`;
       };
       const metaHtml = metaItems.length
         ? `
@@ -360,8 +367,8 @@ function createRecipeRenderer({
             <button type="button" class="serving-scaler__reset button--ghost" data-action="scale-reset">${escapeHtml(t("detail.scaleReset"))}</button>
           </div>` : ""}
           ${isOwner
-            ? `<button class="inline-edit-trigger recipe-detail-card__editable" data-action="inline-edit-field" data-field="ingredients" data-field-content="ingredients" type="button" aria-label="${escapeHtml(t("detail.editIngredients"))}">${escapeHtml(recipe.ingredients).replace(/\n/g, "<br />")}</button>`
-            : `<div class="recipe-detail-card__editable recipe-detail-card__editable--readonly">${escapeHtml(recipe.ingredients).replace(/\n/g, "<br />")}</div>`}
+            ? `<div class="inline-edit-trigger recipe-detail-card__editable" data-action="inline-edit-field" data-field="ingredients" data-field-content="ingredients" role="button" tabindex="0" aria-label="${escapeHtml(t("detail.editIngredients"))}">${renderIngredientListHtml(recipe.ingredients)}</div>`
+            : `<div class="recipe-detail-card__editable recipe-detail-card__editable--readonly">${renderIngredientListHtml(recipe.ingredients)}</div>`}
         </section>
 
         <section class="recipe-detail-card__section" data-field="method">
@@ -369,8 +376,8 @@ function createRecipeRenderer({
             ${isOwner ? `<button class="inline-edit-trigger" data-action="inline-edit-field" data-field="method" type="button" aria-label="${escapeHtml(t("detail.editMethod"))}">${escapeHtml(t("detail.method"))}</button>` : `<span>${escapeHtml(t("detail.method"))}</span>`}
           </h3>
           ${isOwner
-            ? `<button class="inline-edit-trigger recipe-detail-card__editable" data-action="inline-edit-field" data-field="method" data-field-content="method" type="button" aria-label="${escapeHtml(t("detail.editMethod"))}">${escapeHtml(recipe.method).replace(/\n/g, "<br />")}</button>`
-            : `<div class="recipe-detail-card__editable recipe-detail-card__editable--readonly">${escapeHtml(recipe.method).replace(/\n/g, "<br />")}</div>`}
+            ? `<div class="inline-edit-trigger recipe-detail-card__editable" data-action="inline-edit-field" data-field="method" data-field-content="method" role="button" tabindex="0" aria-label="${escapeHtml(t("detail.editMethod"))}">${renderMethodListHtml(recipe.method)}</div>`
+            : `<div class="recipe-detail-card__editable recipe-detail-card__editable--readonly">${renderMethodListHtml(recipe.method)}</div>`}
         </section>
 
         ${recipe.notes
@@ -379,15 +386,18 @@ function createRecipeRenderer({
                 ${isOwner ? `<button class="inline-edit-trigger" data-action="inline-edit-field" data-field="notes" type="button" aria-label="${escapeHtml(t("detail.editNotes"))}">${escapeHtml(t("detail.notes"))}</button>` : `<span>${escapeHtml(t("detail.notes"))}</span>`}
               </h3>
               ${isOwner
-                ? `<button class="inline-edit-trigger recipe-detail-card__editable" data-action="inline-edit-field" data-field="notes" data-field-content="notes" type="button" aria-label="${escapeHtml(t("detail.editNotes"))}">${escapeHtml(recipe.notes).replace(/\n/g, "<br />")}</button>`
+                ? `<div class="inline-edit-trigger recipe-detail-card__editable" data-action="inline-edit-field" data-field="notes" data-field-content="notes" role="button" tabindex="0" aria-label="${escapeHtml(t("detail.editNotes"))}">${escapeHtml(recipe.notes).replace(/\n/g, "<br />")}</div>`
                 : `<div class="recipe-detail-card__editable recipe-detail-card__editable--readonly">${escapeHtml(recipe.notes).replace(/\n/g, "<br />")}</div>`}
             </section>`
           : (isOwner ? `<button class="button button--ghost recipe-detail-card__add-notes" type="button" data-action="inline-edit-field" data-field="notes" data-id="${recipe.id}">${escapeHtml(t("detail.addNotes"))}</button>` : "")}
 
         <div class="recipe-detail-card__actions">
           ${isOwner ? `
-          <button class="button button--secondary" type="button" data-action="edit" data-id="${recipe.id}">
+          <button class="button" type="button" data-action="edit" data-id="${recipe.id}">
             ${escapeHtml(t("detail.edit"))}
+          </button>
+          <button class="button button--secondary" type="button" data-action="add-to-shopping" data-id="${recipe.id}">
+            ${escapeHtml(t("detail.addToShopping"))}
           </button>
           <button class="button button--secondary hidden" type="button" data-action="duplicate" data-id="${recipe.id}">
             ${escapeHtml(t("detail.duplicate"))}
@@ -395,13 +405,10 @@ function createRecipeRenderer({
           <button class="button button--secondary hidden" type="button" data-action="share" data-id="${recipe.id}">
             ${escapeHtml(t("detail.share"))}
           </button>
-          <button class="button button--secondary recipe-detail-card__print-button" type="button" onclick="window.print()">
+          <button class="button button--ghost recipe-detail-card__print-button" type="button" onclick="window.print()">
             ${escapeHtml(t("detail.print"))}
           </button>
-          <button class="button button--secondary" type="button" data-action="add-to-shopping" data-id="${recipe.id}">
-            ${escapeHtml(t("detail.addToShopping"))}
-          </button>
-          <button class="button button--danger" type="button" data-action="delete" data-id="${recipe.id}">
+          <button class="button button--ghost recipe-detail-card__delete-button" type="button" data-action="delete" data-id="${recipe.id}">
             ${escapeHtml(t("detail.delete"))}
           </button>` : `
           <button class="button" type="button" data-action="save-from-friend" data-id="${recipe.id}">
