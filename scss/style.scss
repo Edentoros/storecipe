@@ -765,6 +765,16 @@ body.theme-dark .language-menu__item--selected .language-option {
 }
 .panel__friends-feed-toggle {
   white-space: nowrap;
+  /* Match .icon-button's 36px box and drop the base button margin-top so this
+     lines up with the adjacent add-recipe button. */
+  margin-top: 0;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 0.75rem;
+  font-size: 0.85rem;
+}
+.panel__title-actions {
+  align-items: center;
 }
 label {
   display: block;
@@ -959,12 +969,22 @@ button:active:not(:disabled) {
   gap: 4px;
   margin-top: 0.75rem;
 }
+.search-filters {
+  align-items: stretch;
+}
 .search-filters select {
   flex: 1;
   min-width: 140px;
   padding: 0.55rem 0.8rem;
   font-size: 0.9rem;
   padding-right: 2rem;
+}
+/* The base `button` rule carries margin-top: 1rem, which selects don't have —
+   that offset was what knocked Favourites out of line with the two dropdowns. */
+.search-filters button {
+  margin-top: 0;
+  font-size: 0.9rem;
+  padding: 0.55rem 0.9rem;
 }
 .button--fav-active {
   background-color: #fdecea;
@@ -990,24 +1010,30 @@ button:active:not(:disabled) {
   outline: 2px solid #cc5a24;
   outline-offset: 2px;
 }
-.recipe-card img {
+/* The media cell sizes the grid column; the image fills it absolutely so its
+   intrinsic aspect ratio never drives the card height. */
+.recipe-card .recipe-card__media {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 200px;
+  background: #f0f4f8;
+  cursor: pointer;
+}
+.recipe-card .recipe-card__media--empty {
+  height: 124px;
+}
+.recipe-card .recipe-card__media > img,
+.recipe-card .recipe-card__media > .recipe-card__image {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
-  height: 200px;
+  height: 100%;
   object-fit: cover;
-  background: #f0f4f8;
-}
-.recipe-card .recipe-card__image {
-  width: 100%;
-  height: 200px;
-}
-.recipe-card img[data-action=view],
-.recipe-card .recipe-card__image[data-action=view] {
-  cursor: pointer;
 }
 .recipe-card .recipe-card__image--placeholder {
   background: linear-gradient(135deg, #e6edf5 0%, #d7e4f2 100%);
-  height: 124px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2334,10 +2360,11 @@ body.theme-dark #closeDetail {
     display: grid;
     grid-template-columns: 200px 1fr;
   }
-  .recipe-card img,
-  .recipe-card .recipe-card__image {
-    height: 100%;
+  .recipe-card .recipe-card__media,
+  .recipe-card .recipe-card__media--empty {
+    height: auto;
     min-height: 148px;
+    align-self: stretch;
   }
   .recipe-card .recipe-card__body {
     align-self: center;

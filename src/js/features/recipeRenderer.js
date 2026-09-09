@@ -55,9 +55,9 @@ function createRecipeRenderer({
     image.src = recipe._resolvedImageUrl;
     image.alt = String(recipe.title ?? t("card.untitled"));
     image.loading = "lazy";
-    image.dataset.action = "view";
-    image.dataset.id = recipe.id;
     placeholder.replaceWith(image);
+    // Drop the shorter empty-state height now that there's a real photo.
+    card.querySelector(".recipe-card__media")?.classList.remove("recipe-card__media--empty");
   }
 
   function patchOpenDetailImage(recipe) {
@@ -173,22 +173,27 @@ function createRecipeRenderer({
           favButton.innerHTML = recipe.is_favourite ? "&#9829;" : "&#9825;";
           article.appendChild(favButton);
 
+          // The media cell is the grid item; the image fills it absolutely so its
+          // intrinsic aspect ratio can't drive the card's height (otherwise a
+          // squarer photo makes a taller card than a wide one).
+          const media = document.createElement("div");
+          media.className = "recipe-card__media" + (safeImageUrl ? "" : " recipe-card__media--empty");
+          media.dataset.action = "view";
+          media.dataset.id = recipe.id || "";
+
           if (safeImageUrl) {
             const image = document.createElement("img");
             image.src = safeImageUrl;
             image.alt = title;
             image.loading = "lazy";
-            image.dataset.action = "view";
-            image.dataset.id = recipe.id || "";
-            article.appendChild(image);
+            media.appendChild(image);
           } else {
             const placeholder = document.createElement("div");
             placeholder.className = "recipe-card__image recipe-card__image--placeholder";
             placeholder.setAttribute("aria-hidden", "true");
-            placeholder.dataset.action = "view";
-            placeholder.dataset.id = recipe.id || "";
-            article.appendChild(placeholder);
+            media.appendChild(placeholder);
           }
+          article.appendChild(media);
 
           const body = document.createElement("div");
           body.className = "recipe-card__body";
