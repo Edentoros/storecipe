@@ -178,6 +178,24 @@
   // Apply initial DOM translations as soon as the DOM is parsed (defer scripts run after).
   i18n.applyToDom(document);
 
+  // Supabase restores the persisted session asynchronously. onAuthStateChange
+  // fires INITIAL_SESSION on its own schedule and its handler is not awaited by
+  // init(), so without this signal init() can hide the startup loader while the
+  // auth UI is still showing its signed-out default — that's the login-form
+  // flash on refresh. applyAuthSession resolves this as soon as it has painted
+  // the correct shell (before recipes finish loading).
+  let markAuthUiReady = () => {};
+  const authUiReady = new Promise((resolve) => {
+    markAuthUiReady = resolve;
+  });
+  const AUTH_UI_READY_TIMEOUT_MS = 8000;
+  function waitForAuthUiReady() {
+    return Promise.race([
+      authUiReady,
+      new Promise((resolve) => window.setTimeout(resolve, AUTH_UI_READY_TIMEOUT_MS))
+    ]);
+  }
+
   function setStartupLoading(isLoading) {
     state.isStartupLoading = Boolean(isLoading);
     if (startupLoader) {
@@ -187,6 +205,14 @@
       appRoot.hidden = Boolean(isLoading);
       appRoot.setAttribute("aria-hidden", isLoading ? "true" : "false");
       appRoot.setAttribute("aria-busy", isLoading ? "true" : "false");
+      // Fade is a one-shot animation, not a transition from opacity:0, so the
+      // app stays visible even if this class never lands (background tab, etc).
+      appRoot.classList.toggle("app--ready", !isLoading);
+    }
+    if (!isLoading && state.activeRecipeLoadCount > 0) {
+      // Recipes are still in flight as we reveal — show the list skeleton so the
+      // user never sees an empty list settle into a populated one.
+      authUiManager.setRecipeListLoading(true);
     }
   }
   const normalizeDifficulty = (value) => normalizeDifficultyCore(value, DEFAULT_DIFFICULTY);
@@ -2644,6 +2670,9 @@
     if (identityChanged || authEvent === "SIGNED_OUT" || authEvent === "INITIAL_SESSION" || authEvent === "SESSION_SYNC") {
       setRecipeUiEnabled(Boolean(state.currentUser));
     }
+    // Shell now reflects the real auth state — safe to reveal the app. Recipes
+    // may still be loading below; the list skeleton covers that.
+    markAuthUiReady();
 
     if (switchedUser) {
       showListView();
@@ -2717,6 +2746,10 @@
           await applyAuthSession(event, session);
         } catch (_error) {
           return;
+        } finally {
+          // Safety net: never strand the user on the spinner if the pass above
+          // bailed before reaching applyAuthSession's own signal.
+          markAuthUiReady();
         }
       });
 
@@ -2725,6 +2758,11 @@
       if (!state.hasCompletedInitialAuthBootstrap) {
         state.hasCompletedInitialAuthBootstrap = true;
         await applyAuthSession("SESSION_SYNC", data?.session ?? null);
+      } else {
+        // onAuthStateChange claimed the initial pass. Its handler runs detached
+        // from this function, so wait for it rather than revealing the shell
+        // mid-flight.
+        await waitForAuthUiReady();
       }
       setToggleAddRecipeState(!addRecipeSection.classList.contains("hidden"));
     } finally {

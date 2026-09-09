@@ -45,6 +45,24 @@ body {
   margin: 0 auto;
   padding: 1rem;
 }
+/* Fail-open: the shell is opaque by default, and .app--ready only adds a
+   one-shot fade. If the class never lands the app is still visible. */
+.app--ready {
+  animation: app-fade-in 0.24s ease;
+}
+@keyframes app-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app--ready {
+    animation: none;
+  }
+}
 .app__header {
   margin-bottom: 1rem;
 }
