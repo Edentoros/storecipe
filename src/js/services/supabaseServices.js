@@ -468,15 +468,34 @@ function createSupabaseServices({ config, state, helpers }) {
     if (!hasSupabaseConfig) {
       throw new Error("Recipe import needs a configured Supabase project.");
     }
-    const response = await debugFetch(`${SUPABASE_URL}/functions/v1/${RECIPE_IMPORT_FUNCTION}`, {
-      method: "POST",
-      headers: {
-        apikey: SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${getAccessToken()}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(body)
-    }, { retries: 0 });
+    let accessToken;
+    try {
+      accessToken = getAccessToken();
+    } catch (authError) {
+      const error = new Error(String(authError?.message || "Not signed in"));
+      error.code = "unauthenticated";
+      throw error;
+    }
+
+    let response;
+    try {
+      response = await debugFetch(`${SUPABASE_URL}/functions/v1/${RECIPE_IMPORT_FUNCTION}`, {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      }, { retries: 0 });
+    } catch (networkError) {
+      // The browser only says "Failed to fetch" here. That includes the function
+      // not being deployed: Supabase's 404 for a missing function fails the CORS
+      // preflight, so we never get to see the 404 itself.
+      const error = new Error(String(networkError?.message || "Network error"));
+      error.code = "service_unreachable";
+      throw error;
+    }
 
     const data = await parseResponse(response, {});
     if (!response.ok) {
