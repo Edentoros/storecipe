@@ -103,6 +103,10 @@
     favouritesFilter,
     sortSelect,
     searchPanel,
+    toggleFilters,
+    searchFilters,
+    activeFilterCount,
+    showManualForm,
     listPanel,
     addRecipeSection,
     recipeFormHeading,
@@ -507,6 +511,13 @@
     if (recipeImportTools) {
       recipeImportTools.classList.toggle("hidden", Boolean(state.editingRecipeId));
     }
+    // A new recipe starts as just the link box; editing shows the full form.
+    recipeForm.classList.toggle("recipe-form--import-only", !state.editingRecipeId);
+  }
+
+  function showManualRecipeFields({ focus = false } = {}) {
+    recipeForm.classList.remove("recipe-form--import-only");
+    if (focus) recipeForm.elements.title?.focus();
   }
 
   function startEditRecipe(recipe) {
@@ -649,6 +660,7 @@
     }
     if (imageUrlInput && draft.imageUrl) imageUrlInput.value = draft.imageUrl;
     getRecipeMetaFromFormData(new FormData(recipeForm), { showStatus: false });
+    showManualRecipeFields();
     setAddRecipeOpen(true);
     setAppStatus(t("status.draftRestored"));
     return true;
@@ -822,13 +834,32 @@
     if (recipe && recipe.id) pushRecipeUrl(recipe.id);
   }
 
+  function setFiltersOpen(isOpen) {
+    if (searchFilters) searchFilters.classList.toggle("hidden", !isOpen);
+    if (toggleFilters) toggleFilters.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  }
+
+  if (toggleFilters && searchFilters) {
+    toggleFilters.addEventListener("click", () => setFiltersOpen(searchFilters.classList.contains("hidden")));
+  }
+
   function updateFilterVisibility() {
     const recipes = Array.isArray(state.recipes) ? state.recipes : [];
     const showFilters = recipes.length > 2;
     const uniqueCategories = new Set(recipes.map((r) => r.category).filter(Boolean));
     const showCategoryFilter = showFilters && uniqueCategories.size > 1;
 
-    if (sortSelect) sortSelect.closest(".search-filters")?.classList.toggle("hidden", !showFilters);
+    // Filters sit behind the Filters button, offered once there's enough to filter.
+    if (toggleFilters) toggleFilters.classList.toggle("hidden", !showFilters);
+    if (!showFilters) setFiltersOpen(false);
+    if (activeFilterCount) {
+      const active =
+        (state.activeCategory ? 1 : 0) +
+        (state.showFavouritesOnly ? 1 : 0) +
+        (state.sortBy && state.sortBy !== "created_at_desc" ? 1 : 0);
+      activeFilterCount.textContent = String(active);
+      activeFilterCount.classList.toggle("hidden", active === 0);
+    }
     if (categoryFilter) categoryFilter.classList.toggle("hidden", !showCategoryFilter);
     if (favouritesFilter) favouritesFilter.classList.toggle("hidden", !showFilters);
     if (sortSelect) sortSelect.classList.toggle("hidden", !showFilters);
@@ -890,7 +921,7 @@
     }
   }
 
-  async function addRecipe(formData) {
+  async function addRecipe(formData, options = {}) {
     const title = formData.get("title")?.toString().trim();
     const description = formData.get("description")?.toString().trim() || null;
     const ingredients = formData.get("ingredients")?.toString().trim();
@@ -937,7 +968,7 @@
       resetRecipeFormState();
       rerenderList();
       showDetail(localRecipe);
-      return;
+      return true;
     }
 
     if (!state.currentUser) {
@@ -953,8 +984,13 @@
         imagePath = await uploadImage(fetchedFile, state.currentUser.id);
       } catch (error) {
         logSupabaseError("image url fetch", error);
-        setAppStatus(t("status.imageFetchFailed", { error: error.message || "Unexpected error" }));
-        return;
+        if (!options.skipImageOnError) {
+          setAppStatus(t("status.imageFetchFailed", { error: error.message || "Unexpected error" }));
+          return false;
+        }
+        // An import shouldn't be lost just because the site's photo wouldn't download.
+        imagePath = null;
+        options.onImageSkipped?.();
       }
     } else if (image instanceof File && image.size > 0) {
       try {
@@ -1023,6 +1059,7 @@
           showDetail(fallbackRecipe);
         }
       }
+      return true;
     } catch (error) {
       logSupabaseError("insert recipe", error);
       if (isMissingUserIdColumn(error)) {
@@ -1470,9 +1507,26 @@
       state.pendingImportSourceUrl = isValidHttpUrl(importedRecipe.source_url) ? importedRecipe.source_url : "";
       showImportQuota(data);
       if (recipeImportUrlInput) recipeImportUrlInput.value = "";
-      const source = normalizeImportedText(importedRecipe.source_url) || url;
-      // tidied === false: the AI tidy-up wasn't available, so this is the site's raw data.
-      setAppStatus(t(data?.tidied === false ? "status.importedUntidied" : "status.importedFrom", { source: hostnameOf(source) }));
+      const site = hostnameOf(normalizeImportedText(importedRecipe.source_url) || url);
+
+      // Save straight away; the recipe page is where it's checked and edited.
+      let photoSkipped = false;
+      const saved = await submitRecipeForm({
+        skipImageOnError: true,
+        onImageSkipped: () => {
+          photoSkipped = true;
+        }
+      });
+      if (saved) {
+        // tidied === false: the AI wasn't available, so this is the site's raw data.
+        const key =
+          data?.tidied === false ? "status.importedSavedUntidied" : photoSkipped ? "status.importedSavedNoPhoto" : "status.importedSaved";
+        setAppStatus(t(key, { source: site }));
+      } else {
+        // Keep the filled-in form on screen so nothing is lost; the save step
+        // has already said what went wrong.
+        showManualRecipeFields();
+      }
     } catch (error) {
       showImportQuota(error);
       setAppStatus(describeImportError(error));
@@ -1675,19 +1729,23 @@
     }
   });
 
-  recipeForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
+  // Returns true once a new recipe is saved. Import calls this directly to save
+  // straight away, without the user pressing Save.
+  async function submitRecipeForm(options = {}) {
     const hasInlineMetaWarning = Boolean(
       (prepTimeWarning && !prepTimeWarning.classList.contains("hidden")) ||
         (cookTimeWarning && !cookTimeWarning.classList.contains("hidden")) ||
         (servesWarning && !servesWarning.classList.contains("hidden"))
     );
     if (!recipeForm.checkValidity()) {
+      // The fields may be hidden behind the link box; show them so the
+      // browser can point at what's missing.
+      showManualRecipeFields();
       recipeForm.reportValidity();
       if (!hasInlineMetaWarning) {
         setAppStatus(t("status.fillAllRequired"));
       }
-      return;
+      return false;
     }
 
     setAppStatus(state.editingRecipeId ? t("status.updating") : t("status.saving"));
@@ -1696,12 +1754,18 @@
     try {
       if (state.editingRecipeId) {
         await updateRecipe(formData);
-      } else {
-        await addRecipe(formData);
+        return true;
       }
+      return Boolean(await addRecipe(formData, options));
     } catch (error) {
       setAppStatus(t("status.saveFailed", { error: error.message || "Unexpected error" }));
+      return false;
     }
+  }
+
+  recipeForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void submitRecipeForm();
   });
 
   recipeForm.addEventListener(
@@ -1712,8 +1776,18 @@
     true
   );
 
-  recipeForm.addEventListener("input", saveDraftDebounced);
-  recipeForm.addEventListener("change", saveDraftDebounced);
+  // The link box sits inside the form but isn't recipe content: typing a URL
+  // there shouldn't save an empty draft that reopens the full form on refresh.
+  const saveDraftUnlessImportField = (event) => {
+    if (event.target === recipeImportUrlInput) return;
+    saveDraftDebounced();
+  };
+  recipeForm.addEventListener("input", saveDraftUnlessImportField);
+  recipeForm.addEventListener("change", saveDraftUnlessImportField);
+
+  if (showManualForm) {
+    showManualForm.addEventListener("click", () => showManualRecipeFields({ focus: true }));
+  }
 
   if (saveRecipeButton) {
     saveRecipeButton.addEventListener("click", () => {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Storecipe</title>
-    <link rel="stylesheet" href="dist/style.css?v=20261014e" />
+    <link rel="stylesheet" href="dist/style.css?v=20261014f" />
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -147,32 +147,6 @@
       </section>
       <div id="settingsBackdrop" class="settings-backdrop hidden" aria-hidden="true"></div>
 
-      <section class="panel panel--search">
-        <h2><label for="searchInput" data-i18n="search.title">Search Recipes</label></h2>
-        <input id="searchInput" type="text" data-i18n-placeholder="search.placeholder" placeholder="Search by title..." />
-        <div class="search-filters">
-          <select id="categoryFilter" data-i18n-aria-label="search.filterCategory" aria-label="Filter by category">
-            <option value="" data-i18n="search.allCategories">All categories</option>
-            <option value="breakfast" data-i18n="category.breakfast">Breakfast</option>
-            <option value="lunch" data-i18n="category.lunch">Lunch</option>
-            <option value="dinner" data-i18n="category.dinner">Dinner</option>
-            <option value="soups" data-i18n="category.soups">Soups</option>
-            <option value="snack" data-i18n="category.snack">Snack</option>
-            <option value="dessert" data-i18n="category.dessert">Dessert</option>
-            <option value="drinks" data-i18n="category.drinks">Drinks</option>
-            <option value="other" data-i18n="category.other">Other</option>
-          </select>
-          <button id="favouritesFilter" class="button button--ghost" type="button" aria-pressed="false" data-i18n="search.favourites" data-i18n-title="search.favouritesTitle" title="Show favourites only">&#9825; Favourites</button>
-          <select id="sortSelect" data-i18n-aria-label="search.sortLabel" aria-label="Sort recipes">
-            <option value="created_at_desc" data-i18n="sort.newest">Newest first</option>
-            <option value="created_at_asc" data-i18n="sort.oldest">Oldest first</option>
-            <option value="title_asc" data-i18n="sort.titleAZ">Name (A–Z)</option>
-            <option value="title_desc" data-i18n="sort.titleZA">Name (Z–A)</option>
-            <option value="difficulty_asc" data-i18n="sort.easiest">Easiest first</option>
-            <option value="difficulty_desc" data-i18n="sort.hardest">Hardest first</option>
-          </select>
-        </div>
-      </section>
 
       <section class="panel panel--list">
         <div class="panel__title-row">
@@ -195,6 +169,44 @@
             >
               +
             </button>
+          </div>
+        </div>
+        <div class="recipe-search">
+          <div class="recipe-search__bar">
+            <label for="searchInput" class="sr-only" data-i18n="search.title">Search Recipes</label>
+            <input id="searchInput" type="search" data-i18n-placeholder="search.placeholder" placeholder="Search by title..." autocomplete="off" />
+            <button
+              id="toggleFilters"
+              class="button button--ghost recipe-search__filters-toggle hidden"
+              type="button"
+              aria-expanded="false"
+              aria-controls="searchFilters"
+            >
+              <span data-i18n="search.filters">Filters</span>
+              <span id="activeFilterCount" class="recipe-search__count hidden"></span>
+            </button>
+          </div>
+          <div id="searchFilters" class="search-filters hidden">
+            <select id="categoryFilter" data-i18n-aria-label="search.filterCategory" aria-label="Filter by category">
+              <option value="" data-i18n="search.allCategories">All categories</option>
+              <option value="breakfast" data-i18n="category.breakfast">Breakfast</option>
+              <option value="lunch" data-i18n="category.lunch">Lunch</option>
+              <option value="dinner" data-i18n="category.dinner">Dinner</option>
+              <option value="soups" data-i18n="category.soups">Soups</option>
+              <option value="snack" data-i18n="category.snack">Snack</option>
+              <option value="dessert" data-i18n="category.dessert">Dessert</option>
+              <option value="drinks" data-i18n="category.drinks">Drinks</option>
+              <option value="other" data-i18n="category.other">Other</option>
+            </select>
+            <button id="favouritesFilter" class="button button--ghost" type="button" aria-pressed="false" data-i18n="search.favourites" data-i18n-title="search.favouritesTitle" title="Show favourites only">&#9825; Favourites</button>
+            <select id="sortSelect" data-i18n-aria-label="search.sortLabel" aria-label="Sort recipes">
+              <option value="created_at_desc" data-i18n="sort.newest">Newest first</option>
+              <option value="created_at_asc" data-i18n="sort.oldest">Oldest first</option>
+              <option value="title_asc" data-i18n="sort.titleAZ">Name (A–Z)</option>
+              <option value="title_desc" data-i18n="sort.titleZA">Name (Z–A)</option>
+              <option value="difficulty_asc" data-i18n="sort.easiest">Easiest first</option>
+              <option value="difficulty_desc" data-i18n="sort.hardest">Hardest first</option>
+            </select>
           </div>
         </div>
         <div id="recipeListLoading" class="recipe-list-loading hidden" aria-live="polite" aria-busy="true">
@@ -232,10 +244,10 @@
             <span data-i18n="form.close">Close</span>
           </button>
         </div>
-        <form id="recipeForm">
+        <form id="recipeForm" class="recipe-form--import-only">
           <div id="recipeImportTools" class="recipe-import-tools">
-            <label for="recipeImportUrl" class="recipe-import-tools__label" data-i18n="import.heading">Import from a website</label>
-            <p class="recipe-import-tools__hint" data-i18n="import.hint">Paste a link to a recipe page and we'll fill in the form for you to check.</p>
+            <label for="recipeImportUrl" class="sr-only" data-i18n="import.heading">Import from a website</label>
+            <p class="recipe-import-tools__hint" data-i18n="import.hint">Paste a link to any recipe page and we'll tidy it up and save it.</p>
             <div class="recipe-import-tools__row">
               <input
                 id="recipeImportUrl"
@@ -248,6 +260,7 @@
               />
               <button id="importRecipeButton" type="button" class="button recipe-import-tools__button" data-i18n="form.importButton">Import</button>
             </div>
+            <button id="showManualForm" type="button" class="recipe-import-tools__manual" data-i18n="import.manual">or type it in yourself</button>
             <p id="importQuotaInfo" class="recipe-import-tools__quota hidden" aria-live="polite"></p>
           </div>
           <label for="title" data-i18n="form.title">Title</label>
@@ -483,6 +496,6 @@
     <script defer src="src/js/features/recipeRenderer.js"></script>
     <script defer src="src/js/features/friendsManager.js"></script>
     <script defer src="src/js/services/supabaseServices.js"></script>
-    <script defer src="app.js?v=20261014e"></script>
+    <script defer src="app.js?v=20261014f"></script>
   </body>
 </html>

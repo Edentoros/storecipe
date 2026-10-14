@@ -172,8 +172,10 @@ function parseDurationText(value) {
   if (colonMatch) {
     totalMinutes = Number(colonMatch[1]) * 60 + Number(colonMatch[2]);
   } else {
-    const hourMatch = raw.match(/(\d+)\s*h/);
-    const minuteMatch = raw.match(/(\d+)\s*m/);
+    // Durations are saved as display text in whichever language was active
+    // ("1 hour", "1 час"), so recognise both languages' units.
+    const hourMatch = raw.match(/(\d+)\s*(?:h|ч)/);
+    const minuteMatch = raw.match(/(\d+)\s*(?:m|мин)/);
     if (hourMatch || minuteMatch) {
       totalMinutes = Number(hourMatch?.[1] || 0) * 60 + Number(minuteMatch?.[1] || 0);
     } else {

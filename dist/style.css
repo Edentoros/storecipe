@@ -2747,3 +2747,100 @@ body.feature-off-friends #openFriends,
 body.feature-off-friends #toggleFriendsFeed {
   display: none !important;
 }
+
+/* ── Add recipe: link box first ─────────────────────────────────────────── */
+/* A new recipe shows only the link box until "or type it in yourself". */
+#recipeForm.recipe-form--import-only > :not(#recipeImportTools) {
+  display: none;
+}
+#recipeForm.recipe-form--import-only #recipeImportTools {
+  margin-bottom: 0;
+}
+.recipe-import-tools__manual {
+  all: unset;
+  display: inline-block;
+  margin-top: 0.65rem;
+  font-size: 0.88rem;
+  color: #486581;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.recipe-import-tools__manual:hover {
+  color: #243b53;
+}
+.recipe-import-tools__manual:focus-visible {
+  outline: 2px solid #cc5a24;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+#recipeForm:not(.recipe-form--import-only) .recipe-import-tools__manual {
+  display: none;
+}
+body.theme-dark .recipe-import-tools__manual {
+  color: #9fb3c8;
+}
+body.theme-dark .recipe-import-tools__manual:hover {
+  color: #d9e2ec;
+}
+
+/* ── Compact search ─────────────────────────────────────────────────────── */
+.recipe-search {
+  margin: 0 0 0.9rem;
+}
+.recipe-search__bar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+.recipe-search__bar input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0.55rem 0.8rem;
+}
+/* :not(.hidden) so this display value can't override the .hidden utility,
+   which is defined earlier in the file. */
+.recipe-search__filters-toggle:not(.hidden) {
+  display: inline-flex;
+}
+.recipe-search__filters-toggle {
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0;
+  min-height: 0;
+  padding: 0 0.85rem;
+  font-size: 0.9rem;
+}
+.recipe-search__count:not(.hidden) {
+  display: inline-flex;
+}
+.recipe-search__count {
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: #cc5a24;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.recipe-search .search-filters {
+  margin-top: 0.5rem;
+}
+
+/* On phones the add-recipe heading and a labelled Close button don't fit on
+   one line, so Close shrinks to just the × (the button keeps its aria-label). */
+@media (max-width: 560px) {
+  .recipe-form__close span[data-i18n] {
+    display: none;
+  }
+  .recipe-form__close {
+    width: 36px;
+    padding: 0;
+    justify-content: center;
+  }
+}
