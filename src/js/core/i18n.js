@@ -117,6 +117,7 @@
       "form.saving": "Saving...",
       "form.cancel": "Cancel editing",
       "form.cancelShort": "Cancel",
+      "form.close": "Close",
 
       // Recipe card
       "card.untitled": "Untitled recipe",
@@ -459,6 +460,7 @@
       "form.saving": "Сохранение...",
       "form.cancel": "Отменить редактирование",
       "form.cancelShort": "Отмена",
+      "form.close": "Закрыть",
 
       "card.untitled": "Рецепт без названия",
       "card.view": "Открыть",

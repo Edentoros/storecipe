@@ -112,6 +112,7 @@
     toggleAddRecipe,
     saveRecipeButton,
     cancelEditButton,
+    closeRecipeForm,
     imageInput,
     imageUrlInput,
     recipeImportUrlInput,
@@ -1682,24 +1683,32 @@
     });
   }
 
+  // Shared by the bottom Cancel and the header Close: discard the form and return
+  // to wherever the user came from (the recipe being edited, or the list).
+  function closeRecipeFormView() {
+    const isEditing = Boolean(state.editingRecipeId);
+    const recipeId = state.editingRecipeId;
+    const recipe = recipeId ? state.recipes.find((item) => item.id === recipeId) : null;
+
+    resetRecipeFormState();
+
+    if (recipe) {
+      showDetail(recipe);
+    } else if (isRecipeUiAvailable()) {
+      showListView();
+    } else {
+      setAddRecipeOpen(false);
+    }
+
+    setAppStatus(isEditing ? t("status.editCanceled") : t("status.addCanceled"));
+  }
+
+  if (closeRecipeForm) {
+    closeRecipeForm.addEventListener("click", closeRecipeFormView);
+  }
+
   if (cancelEditButton) {
-    cancelEditButton.addEventListener("click", () => {
-      const isEditing = Boolean(state.editingRecipeId);
-      const recipeId = state.editingRecipeId;
-      const recipe = recipeId ? state.recipes.find((item) => item.id === recipeId) : null;
-
-      resetRecipeFormState();
-
-      if (recipe) {
-        showDetail(recipe);
-      } else if (isRecipeUiAvailable()) {
-        showListView();
-      } else {
-        setAddRecipeOpen(false);
-      }
-
-      setAppStatus(isEditing ? t("status.editCanceled") : t("status.addCanceled"));
-    });
+    cancelEditButton.addEventListener("click", closeRecipeFormView);
   }
 
   if (durationDigitInputs.length) {

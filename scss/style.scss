@@ -772,9 +772,14 @@ body.theme-dark .language-menu__item--selected .language-option {
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem 0.75rem;
+  /* Spacing lives on the row, not the heading: align-items:center centres the
+     margin box, so the h2 default margin-bottom pushed its text ~10px above
+     the controls beside it. */
+  margin-bottom: 1.25rem;
 }
 .panel__title-row > h2 {
   white-space: nowrap;
+  margin: 0;
 }
 .panel__title-row > .panel__title-actions,
 .panel__title-row > .icon-button,
@@ -793,6 +798,24 @@ body.theme-dark .language-menu__item--selected .language-option {
 }
 .panel__title-actions {
   align-items: center;
+}
+/* Header close for the add/edit form. Zero the base button margin-top or it
+   sits lower than the heading, same as the Favourites/friends-toggle bugs. */
+.recipe-form__close {
+  margin-top: 0;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.recipe-form__close span[aria-hidden="true"] {
+  font-size: 1.2rem;
+  line-height: 1;
 }
 label {
   display: block;

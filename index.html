@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Storecipe</title>
-    <link rel="stylesheet" href="dist/style.css?v=20260909d" />
+    <link rel="stylesheet" href="dist/style.css?v=20261014a" />
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -219,7 +219,19 @@
       </section>
 
       <section id="addRecipeSection" class="panel panel--form hidden">
-        <h2 id="recipeFormHeading" data-i18n="form.addTitle">Add Recipe</h2>
+        <div class="panel__title-row">
+          <h2 id="recipeFormHeading" data-i18n="form.addTitle">Add Recipe</h2>
+          <button
+            id="closeRecipeForm"
+            class="button button--ghost recipe-form__close"
+            type="button"
+            data-i18n-aria-label="form.close"
+            aria-label="Close"
+          >
+            <span aria-hidden="true">&times;</span>
+            <span data-i18n="form.close">Close</span>
+          </button>
+        </div>
         <form id="recipeForm">
           <label for="title" data-i18n="form.title">Title</label>
           <input id="title" name="title" type="text" required />
@@ -500,6 +512,6 @@
     <script defer src="src/js/features/recipeRenderer.js"></script>
     <script defer src="src/js/features/friendsManager.js"></script>
     <script defer src="src/js/services/supabaseServices.js"></script>
-    <script defer src="app.js?v=20260909d"></script>
+    <script defer src="app.js?v=20261014a"></script>
   </body>
 </html>

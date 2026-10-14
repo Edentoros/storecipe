@@ -44,6 +44,7 @@ function getDomRefs() {
     toggleAddRecipe: document.getElementById("toggleAddRecipe"),
     saveRecipeButton: document.getElementById("saveRecipeButton"),
     cancelEditButton: document.getElementById("cancelEditButton"),
+    closeRecipeForm: document.getElementById("closeRecipeForm"),
     imageInput: document.getElementById("image"),
     imageUrlInput: document.getElementById("imageUrlInput"),
     recipeImportUrlInput: document.getElementById("recipeImportUrl"),
