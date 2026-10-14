@@ -21,9 +21,6 @@
     IMAGE_MAX_SIZE_BYTES,
     IMAGE_ALLOWED_TYPES,
     RECIPE_IMPORT_FUNCTION,
-    RECIPE_IMPORT_PROMPT_LOCAL_KEY_PREFIX,
-    RECIPE_IMPORT_PROMPT_DEFAULT_KEY,
-    DEFAULT_RECIPE_IMPORT_PROMPT,
     RECIPE_CATEGORIES
   } = window.StorecipeConstants;
   const { getDomRefs } = window.StorecipeDomRefs;
@@ -53,7 +50,6 @@
     debounce
   } = window.StorecipeHelpers;
   const { scaleIngredients } = window.StorecipeIngredientParser;
-  const { createImportPromptManager } = window.StorecipeImportPromptManager;
   const { createRecipeMetaManager } = window.StorecipeRecipeMetaManager;
   const { createRecipeRenderer } = window.StorecipeRecipeRenderer;
   const { createSupabaseServices } = window.StorecipeSupabaseServices;
@@ -117,8 +113,8 @@
     imageUrlInput,
     recipeImportUrlInput,
     importRecipeButton,
-    recipeImportPromptInput,
-    resetImportPromptButton,
+    recipeImportTools,
+    importQuotaInfo,
     prepHoursInput,
     prepMinutesInput,
     prepTimeWarning,
@@ -270,6 +266,7 @@
     updateRecipeViaRest,
     fetchRecipesViaRest,
     importRecipeFromUrlViaFunction,
+    fetchImportQuotaViaFunction,
     uploadImage,
     fetchExternalImageAsFile,
     readFileAsDataUrl,
@@ -322,18 +319,6 @@
     window.localStorage.setItem(LOCAL_RECIPES_KEY, JSON.stringify(nextRecipes));
   }
 
-  const importPromptManager = createImportPromptManager({
-    inputElement: recipeImportPromptInput,
-    defaultPrompt: DEFAULT_RECIPE_IMPORT_PROMPT,
-    localKeyPrefix: RECIPE_IMPORT_PROMPT_LOCAL_KEY_PREFIX,
-    defaultKey: RECIPE_IMPORT_PROMPT_DEFAULT_KEY,
-    getCurrentUserId: () => state.currentUser?.id || null
-  });
-  const normalizeImportPrompt = importPromptManager.normalizeImportPrompt;
-  const setImportPromptUi = importPromptManager.setImportPromptUi;
-  const persistImportPrompt = importPromptManager.persistImportPrompt;
-  const loadImportPrompt = importPromptManager.loadImportPrompt;
-
   function updateImportButtonUi() {
     if (!importRecipeButton) return;
     importRecipeButton.disabled = state.isImportingRecipe;
@@ -344,6 +329,8 @@
     if (!recipe || !recipeForm) return;
 
     const title = normalizeImportedText(recipe.title);
+    const description = normalizeImportedText(recipe.description);
+    const category = normalizeImportedText(recipe.category);
     const ingredients = normalizeImportedText(recipe.ingredients);
     const method = normalizeImportedText(recipe.method);
     const prepHours = parseOptionalBoundedInteger(recipe.prep_hours, 0, 10);
@@ -355,6 +342,15 @@
 
     if (title) {
       recipeForm.elements.title.value = title;
+    }
+    if (description && recipeForm.elements.description) {
+      recipeForm.elements.description.value = description;
+    }
+    if (category && recipeForm.elements.category) {
+      const select = recipeForm.elements.category;
+      if ([...select.options].some((option) => option.value === category)) {
+        select.value = category;
+      }
     }
     if (ingredients) {
       recipeForm.elements.ingredients.value = ingredients;
@@ -498,6 +494,9 @@
     }
     if (!state.editingRecipeId) {
       hideEditImageTools();
+    }
+    if (recipeImportTools) {
+      recipeImportTools.classList.toggle("hidden", Boolean(state.editingRecipeId));
     }
   }
 
@@ -1380,6 +1379,47 @@
     }
   }
 
+  function describeImportError(error) {
+    const code = error?.code;
+    if (code) {
+      const key = `import.error.${code}`;
+      const translated = t(key);
+      if (translated !== key) return translated;
+    }
+    return t("status.importFailed", { error: String(error?.message || "Unexpected error") });
+  }
+
+  function showImportQuota(payload) {
+    if (!importQuotaInfo) return;
+    // null = unlimited user; undefined = this response didn't say, so keep what we show.
+    if (payload?.unlimited || payload?.remaining === null) {
+      importQuotaInfo.classList.add("hidden");
+      return;
+    }
+    const remaining = payload?.remaining;
+    if (typeof remaining !== "number") return;
+    importQuotaInfo.textContent = remaining > 0 ? t("import.remaining", { count: remaining }) : t("import.noneLeft");
+    importQuotaInfo.classList.toggle("recipe-import-tools__quota--empty", remaining === 0);
+    importQuotaInfo.classList.remove("hidden");
+  }
+
+  async function refreshImportQuota() {
+    if (!hasSupabaseConfig || !state.currentUser || !importQuotaInfo) return;
+    try {
+      showImportQuota(await fetchImportQuotaViaFunction());
+    } catch (_error) {
+      // Not deployed yet or offline; an actual import attempt will explain why.
+    }
+  }
+
+  function hostnameOf(url) {
+    try {
+      return new URL(url).hostname.replace(/^www\./, "");
+    } catch (_error) {
+      return url;
+    }
+  }
+
   async function runRecipeImport() {
     if (state.isImportingRecipe) return;
 
@@ -1389,31 +1429,25 @@
       return;
     }
 
-    const prompt = recipeImportPromptInput?.value || importPromptManager.getCurrentImportPrompt();
-    setImportPromptUi(prompt);
-    persistImportPrompt(prompt);
-
     state.isImportingRecipe = true;
     updateImportButtonUi();
     setAppStatus(t("status.importing"));
 
     try {
-      const data = await importRecipeFromUrlViaFunction(url, prompt);
+      const data = await importRecipeFromUrlViaFunction(url);
       const importedRecipe = data?.recipe && typeof data.recipe === "object" ? data.recipe : null;
       if (!importedRecipe) {
         throw new Error("Import response did not include recipe data.");
       }
 
       applyImportedRecipeToForm(importedRecipe);
+      showImportQuota(data);
+      if (recipeImportUrlInput) recipeImportUrlInput.value = "";
       const source = normalizeImportedText(importedRecipe.source_url) || url;
-      setAppStatus(t("status.importedFrom", { source }));
+      setAppStatus(t("status.importedFrom", { source: hostnameOf(source) }));
     } catch (error) {
-      const message = String(error?.message || "Unexpected error");
-      if (message.includes("404")) {
-        setAppStatus(t("status.importFailed", { error: 'deploy the Supabase function "recipe-import" first' }));
-      } else {
-        setAppStatus(t("status.importFailed", { error: message }));
-      }
+      showImportQuota(error);
+      setAppStatus(describeImportError(error));
     } finally {
       state.isImportingRecipe = false;
       updateImportButtonUi();
@@ -1494,21 +1528,6 @@
       if (event.key !== "Enter") return;
       event.preventDefault();
       void runRecipeImport();
-    });
-  }
-
-  if (recipeImportPromptInput) {
-    recipeImportPromptInput.addEventListener("input", () => {
-      importPromptManager.setCurrentImportPrompt(recipeImportPromptInput.value);
-      persistImportPrompt(recipeImportPromptInput.value);
-    });
-  }
-
-  if (resetImportPromptButton) {
-    resetImportPromptButton.addEventListener("click", () => {
-      setImportPromptUi(DEFAULT_RECIPE_IMPORT_PROMPT);
-      persistImportPrompt(DEFAULT_RECIPE_IMPORT_PROMPT);
-      setAppStatus(t("status.importPromptReset"));
     });
   }
 
@@ -2453,6 +2472,9 @@
       resetRecipeFormState();
     }
     setAddRecipeOpen(shouldShow);
+    if (shouldShow && !state.editingRecipeId) {
+      void refreshImportQuota();
+    }
   });
 
   recipeList.addEventListener("click", (event) => {
@@ -2665,11 +2687,9 @@
         state.shoppingListRecipeIds = [];
         friendsManager.resetForSignOut();
       }
-      loadImportPrompt();
     } else if (justSignedIn || switchedUser || authEvent === "USER_UPDATED" || authEvent === "INITIAL_SESSION") {
       await loadThemePreference();
       await loadLanguagePreference();
-      loadImportPrompt();
       // Friends: profile + friendships load in background; failures degrade gracefully.
       friendsManager.loadMyProfile().then(() => {
         friendsManager.updateHeaderButtonVisibility();
@@ -2735,7 +2755,6 @@
       }
       await loadThemePreference();
       await loadLanguagePreference();
-      loadImportPrompt();
       updateImportButtonUi();
 
       if (!hasSupabaseConfig) {

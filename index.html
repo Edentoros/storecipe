@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Storecipe</title>
-    <link rel="stylesheet" href="dist/style.css?v=20261014a" />
+    <link rel="stylesheet" href="dist/style.css?v=20261014b" />
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -233,6 +233,23 @@
           </button>
         </div>
         <form id="recipeForm">
+          <div id="recipeImportTools" class="recipe-import-tools">
+            <label for="recipeImportUrl" class="recipe-import-tools__label" data-i18n="import.heading">Import from a website</label>
+            <p class="recipe-import-tools__hint" data-i18n="import.hint">Paste a link to a recipe page and we'll fill in the form for you to check.</p>
+            <div class="recipe-import-tools__row">
+              <input
+                id="recipeImportUrl"
+                name="recipeImportUrl"
+                type="text"
+                data-i18n-placeholder="form.importUrlPlaceholder"
+                placeholder="Paste recipe URL (https://...)"
+                autocomplete="off"
+                inputmode="url"
+              />
+              <button id="importRecipeButton" type="button" class="button recipe-import-tools__button" data-i18n="form.importButton">Import</button>
+            </div>
+            <p id="importQuotaInfo" class="recipe-import-tools__quota hidden" aria-live="polite"></p>
+          </div>
           <label for="title" data-i18n="form.title">Title</label>
           <input id="title" name="title" type="text" required />
 
@@ -251,43 +268,6 @@
             <option value="drinks" data-i18n="category.drinks">Drinks</option>
             <option value="other" data-i18n="category.other">Other</option>
           </select>
-
-          <label for="recipeImportUrl" class="sr-only" data-i18n="form.importUrlLabel">Import from recipe link</label>
-          <div class="recipe-import-tools hidden">
-            <div class="recipe-import-tools__row">
-              <input
-                id="recipeImportUrl"
-                name="recipeImportUrl"
-                type="text"
-                data-i18n-placeholder="form.importUrlPlaceholder"
-                placeholder="Paste recipe URL (https://...)"
-                autocomplete="off"
-                inputmode="url"
-              />
-              <button id="importRecipeButton" type="button" class="button button--secondary recipe-import-tools__button" data-i18n="form.importButton">
-                Import
-              </button>
-            </div>
-            <label for="recipeImportPrompt" class="recipe-import-tools__prompt-label" data-i18n="form.importPrompt">Import prompt</label>
-            <textarea
-              id="recipeImportPrompt"
-              name="recipeImportPrompt"
-              class="recipe-import-tools__prompt"
-              rows="5"
-              data-i18n-placeholder="form.importPromptPlaceholder"
-              placeholder="Prompt used to structure extracted recipe text"
-            ></textarea>
-            <div class="recipe-import-tools__actions">
-              <button
-                id="resetImportPromptButton"
-                type="button"
-                class="button button--ghost recipe-import-tools__button recipe-import-tools__button--small"
-                data-i18n="form.resetImportPrompt"
-              >
-                Reset prompt
-              </button>
-            </div>
-          </div>
 
           <label for="image" data-i18n="form.image">Image</label>
           <input id="image" name="image" type="file" accept="image/*" class="hidden" />
@@ -507,11 +487,10 @@
     <script defer src="src/js/features/languageManager.js"></script>
     <script defer src="src/js/features/viewManager.js"></script>
     <script defer src="src/js/features/inlineEditManager.js"></script>
-    <script defer src="src/js/features/importPromptManager.js"></script>
     <script defer src="src/js/features/recipeMetaManager.js"></script>
     <script defer src="src/js/features/recipeRenderer.js"></script>
     <script defer src="src/js/features/friendsManager.js"></script>
     <script defer src="src/js/services/supabaseServices.js"></script>
-    <script defer src="app.js?v=20261014a"></script>
+    <script defer src="app.js?v=20261014b"></script>
   </body>
 </html>

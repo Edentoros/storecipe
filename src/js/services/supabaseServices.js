@@ -464,36 +464,40 @@ function createSupabaseServices({ config, state, helpers }) {
     return Array.isArray(data) ? data : [];
   }
 
-  async function importRecipeFromUrlViaFunction(url, prompt) {
+  async function callRecipeImportFunction(body) {
     if (!hasSupabaseConfig) {
       throw new Error("Recipe import needs a configured Supabase project.");
     }
-
-    const accessToken = getAccessToken();
-    const normalizedPrompt = String(prompt ?? "").trim();
     const response = await debugFetch(`${SUPABASE_URL}/functions/v1/${RECIPE_IMPORT_FUNCTION}`, {
       method: "POST",
       headers: {
         apikey: SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${getAccessToken()}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        url,
-        prompt: normalizedPrompt
-      })
-    });
+      body: JSON.stringify(body)
+    }, { retries: 0 });
 
     const data = await parseResponse(response, {});
     if (!response.ok) {
-      const message =
-        typeof data === "object" && data && "error" in data
-          ? data.error
-          : `Recipe import failed with status ${response.status}`;
-      throw new Error(message);
+      const error = new Error(
+        typeof data === "object" && data && data.error ? data.error : `Recipe import failed with status ${response.status}`
+      );
+      // A 404 with no error code means the edge function isn't deployed yet.
+      error.code = data?.code || (response.status === 404 ? "not_deployed" : null);
+      error.remaining = data?.remaining;
+      throw error;
     }
-
     return data;
+  }
+
+  // The prompt is owned by the server; the browser only ever sends the link.
+  function importRecipeFromUrlViaFunction(url) {
+    return callRecipeImportFunction({ url });
+  }
+
+  function fetchImportQuotaViaFunction() {
+    return callRecipeImportFunction({ action: "quota" });
   }
 
   async function fetchExternalImageAsFile(imageUrl) {
@@ -712,6 +716,7 @@ function createSupabaseServices({ config, state, helpers }) {
     updateRecipeViaRest,
     fetchRecipesViaRest,
     importRecipeFromUrlViaFunction,
+    fetchImportQuotaViaFunction,
     uploadImage,
     fetchExternalImageAsFile,
     readFileAsDataUrl,

@@ -23,25 +23,6 @@ const SUPPORTED_LANGUAGES = [
 const IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
 const IMAGE_ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
 const RECIPE_IMPORT_FUNCTION = "recipe-import";
-const RECIPE_IMPORT_PROMPT_LOCAL_KEY_PREFIX = "storecipe_import_prompt_";
-const RECIPE_IMPORT_PROMPT_DEFAULT_KEY = `${RECIPE_IMPORT_PROMPT_LOCAL_KEY_PREFIX}default`;
-const DEFAULT_RECIPE_IMPORT_PROMPT = `Extract a recipe from the provided page text.
-Return only valid JSON with:
-- title: string
-- ingredients: array of strings
-- method: array of short steps
-- prep_hours: integer 0..10 or null
-- prep_minutes: integer 0..60 or null
-- cook_hours: integer 0..10 or null
-- cook_minutes: integer 0..60 or null
-- serves: integer 1..15 or null
-- difficulty: integer 1..10 (default 4 when unknown)
-- image_url: absolute http/https URL or null
-Rules:
-- Keep only useful recipe data, remove ads/stories.
-- Keep ingredient quantities and units.
-- Keep method concise and practical.
-- If unsure, use null.`;
 
 const RECIPE_CATEGORIES = [
   "Breakfast", "Lunch", "Dinner", "Snack", "Dessert", "Drinks", "Other"
@@ -69,8 +50,5 @@ window.StorecipeConstants = {
   IMAGE_MAX_SIZE_BYTES,
   IMAGE_ALLOWED_TYPES,
   RECIPE_IMPORT_FUNCTION,
-  RECIPE_IMPORT_PROMPT_LOCAL_KEY_PREFIX,
-  RECIPE_IMPORT_PROMPT_DEFAULT_KEY,
-  DEFAULT_RECIPE_IMPORT_PROMPT,
   RECIPE_CATEGORIES
 };
