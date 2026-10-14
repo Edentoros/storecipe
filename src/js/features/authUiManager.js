@@ -294,6 +294,7 @@
       endRecipeListLoad,
       resetRecipeListLoadingState,
       setAppStatus,
+      showToast,
       logSupabaseError,
       setAuthUi
     };

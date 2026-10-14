@@ -63,6 +63,7 @@
   const { createLanguageManager } = window.StorecipeLanguageManager;
   const { createFriendsManager } = window.StorecipeFriendsManager;
   const { createViewManager } = window.StorecipeViewManager;
+  const { createImportNotice, extractImportUrl } = window.StorecipeImportNotice;
   const { createInlineEditManager } = window.StorecipeInlineEditManager;
 
   const {
@@ -120,6 +121,7 @@
     importRecipeButton,
     recipeImportTools,
     importQuotaInfo,
+    importNotice: importNoticeEl,
     prepHoursInput,
     prepMinutesInput,
     prepTimeWarning,
@@ -330,8 +332,21 @@
 
   function updateImportButtonUi() {
     if (!importRecipeButton) return;
-    importRecipeButton.disabled = state.isImportingRecipe;
-    importRecipeButton.textContent = state.isImportingRecipe ? t("form.importing") : t("form.importButton");
+    const busy = Boolean(state.isImportingRecipe);
+    importRecipeButton.disabled = busy;
+    importRecipeButton.classList.toggle("is-busy", busy);
+    importRecipeButton.setAttribute("aria-busy", busy ? "true" : "false");
+    const label = document.createElement("span");
+    label.textContent = busy ? t("form.importing") : t("form.importButton");
+    if (busy) {
+      const spinner = document.createElement("span");
+      spinner.className = "button-spinner";
+      spinner.setAttribute("aria-hidden", "true");
+      importRecipeButton.replaceChildren(spinner, label);
+    } else {
+      importRecipeButton.replaceChildren(label);
+    }
+    if (recipeImportUrlInput) recipeImportUrlInput.readOnly = busy;
   }
 
   function applyImportedRecipeToForm(recipe) {
@@ -421,6 +436,19 @@
   const endRecipeListLoad = authUiManager.endRecipeListLoad;
   const resetRecipeListLoadingState = authUiManager.resetRecipeListLoadingState;
   const setAppStatus = authUiManager.setAppStatus;
+  const showToast = authUiManager.showToast;
+
+  const importNotice = importNoticeEl
+    ? createImportNotice({
+        container: importNoticeEl,
+        input: recipeImportUrlInput,
+        wrapper: recipeImportTools,
+        i18n,
+        onRetry: () => void runRecipeImport(),
+        onManual: () => showManualRecipeFields({ focus: true })
+      })
+    : null;
+
   const logSupabaseError = authUiManager.logSupabaseError;
   const setAuthUi = authUiManager.setAuthUi;
 
@@ -582,6 +610,7 @@
     setRecipeFormMode(null);
     hideEditImageTools();
     clearDraft();
+    importNotice?.clear();
   }
 
   function saveDraft() {
@@ -1037,7 +1066,8 @@
         }
       }
 
-      setAppStatus(metaWarning || t("status.recipeSaved"));
+      // An import announces its own save, naming the recipe and site.
+      if (!options.quiet || metaWarning) setAppStatus(metaWarning || t("status.recipeSaved"));
       resetRecipeFormState();
       const insertedRecipe = Array.isArray(insertedRows) ? insertedRows[0] : null;
       if (insertedRecipe) {
@@ -1442,16 +1472,6 @@
     }
   }
 
-  function describeImportError(error) {
-    const code = error?.code;
-    if (code) {
-      const key = `import.error.${code}`;
-      const translated = t(key);
-      if (translated !== key) return translated;
-    }
-    return t("status.importFailed", { error: String(error?.message || "Unexpected error") });
-  }
-
   function showImportQuota(payload) {
     if (!importQuotaInfo) return;
     // null = unlimited user; undefined = this response didn't say, so keep what we show.
@@ -1486,15 +1506,19 @@
   async function runRecipeImport() {
     if (state.isImportingRecipe) return;
 
-    const url = recipeImportUrlInput?.value?.trim() || "";
+    const url = extractImportUrl(recipeImportUrlInput?.value);
     if (!isValidHttpUrl(url)) {
-      setAppStatus(t("status.invalidImportUrl"));
+      importNotice?.showError({ code: "invalid_url" });
+      recipeImportUrlInput?.focus();
       return;
     }
+    // Show the tidied-up link (e.g. "https://" added, surrounding text dropped).
+    if (recipeImportUrlInput) recipeImportUrlInput.value = url;
+    const site = hostnameOf(url);
 
     state.isImportingRecipe = true;
     updateImportButtonUi();
-    setAppStatus(t("status.importing"));
+    const progress = importNotice?.showProgress(site);
 
     try {
       const data = await importRecipeFromUrlViaFunction(url, state.currentLanguage);
@@ -1506,30 +1530,35 @@
       applyImportedRecipeToForm(importedRecipe);
       state.pendingImportSourceUrl = isValidHttpUrl(importedRecipe.source_url) ? importedRecipe.source_url : "";
       showImportQuota(data);
-      if (recipeImportUrlInput) recipeImportUrlInput.value = "";
-      const site = hostnameOf(normalizeImportedText(importedRecipe.source_url) || url);
+      const title = normalizeImportedText(importedRecipe.title);
+      progress?.saving();
 
       // Save straight away; the recipe page is where it's checked and edited.
       let photoSkipped = false;
       const saved = await submitRecipeForm({
+        quiet: true,
         skipImageOnError: true,
         onImageSkipped: () => {
           photoSkipped = true;
         }
       });
       if (saved) {
+        importNotice?.clear();
+        if (recipeImportUrlInput) recipeImportUrlInput.value = "";
         // tidied === false: the AI wasn't available, so this is the site's raw data.
-        const key =
-          data?.tidied === false ? "status.importedSavedUntidied" : photoSkipped ? "status.importedSavedNoPhoto" : "status.importedSaved";
-        setAppStatus(t(key, { source: site }));
+        const caveat = data?.tidied === false ? "untidied" : photoSkipped ? "noPhoto" : "";
+        const key = caveat === "untidied" ? "status.importedSavedUntidied" : caveat === "noPhoto" ? "status.importedSavedNoPhoto" : "status.importedSaved";
+        // Name the site the recipe really came from (the link may have redirected).
+        const source = hostnameOf(normalizeImportedText(importedRecipe.source_url) || url);
+        showToast(t(key, { source, title }), caveat ? "info" : "success", caveat ? 8000 : 5000);
       } else {
-        // Keep the filled-in form on screen so nothing is lost; the save step
-        // has already said what went wrong.
+        // Keep the filled-in form on screen so nothing is lost.
+        importNotice?.showError({ code: "save_failed", site });
         showManualRecipeFields();
       }
     } catch (error) {
       showImportQuota(error);
-      setAppStatus(describeImportError(error));
+      importNotice?.showError({ code: error?.code, site, message: error?.message });
     } finally {
       state.isImportingRecipe = false;
       updateImportButtonUi();

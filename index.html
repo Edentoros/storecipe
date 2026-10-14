@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Storecipe</title>
-    <link rel="stylesheet" href="dist/style.css?v=20261014f" />
+    <link rel="stylesheet" href="dist/style.css?v=20261014g" />
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -260,6 +260,7 @@
               />
               <button id="importRecipeButton" type="button" class="button recipe-import-tools__button" data-i18n="form.importButton">Import</button>
             </div>
+            <div id="importNotice" class="recipe-import-tools__notice hidden"></div>
             <button id="showManualForm" type="button" class="recipe-import-tools__manual" data-i18n="import.manual">or type it in yourself</button>
             <p id="importQuotaInfo" class="recipe-import-tools__quota hidden" aria-live="polite"></p>
           </div>
@@ -495,7 +496,8 @@
     <script defer src="src/js/features/recipeMetaManager.js"></script>
     <script defer src="src/js/features/recipeRenderer.js"></script>
     <script defer src="src/js/features/friendsManager.js"></script>
+    <script defer src="src/js/features/importNotice.js"></script>
     <script defer src="src/js/services/supabaseServices.js"></script>
-    <script defer src="app.js?v=20261014f"></script>
+    <script defer src="app.js?v=20261014g"></script>
   </body>
 </html>

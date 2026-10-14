@@ -55,6 +55,7 @@ function getDomRefs() {
     importRecipeButton: document.getElementById("importRecipeButton"),
     recipeImportTools: document.getElementById("recipeImportTools"),
     importQuotaInfo: document.getElementById("importQuotaInfo"),
+    importNotice: document.getElementById("importNotice"),
     prepHoursInput: document.getElementById("prepHours"),
     prepMinutesInput: document.getElementById("prepMinutes"),
     prepTimeWarning: document.getElementById("prepTimeWarning"),
