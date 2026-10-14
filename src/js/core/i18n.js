@@ -360,8 +360,6 @@
       "friends.savedToMine": "Saved \"{title}\" to your recipes.",
       "friends.saveFailed": "Could not save recipe: {error}",
       "friends.loadFailed": "Could not load friend recipes: {error}",
-      "friends.shareWithFriends": "Share with friends",
-      "friends.shareHint": "Friends following you will see this recipe.",
       "friends.featureUnavailable": "Friends feature needs SQL migration. Run sql/friends-migration.sql in Supabase.",
       "friends.profileMissing": "Your profile isn't set up yet. Sign out and back in, or run sql/friends-migration.sql."
     },
@@ -711,8 +709,6 @@
       "friends.savedToMine": "Рецепт «{title}» сохранён в ваш список.",
       "friends.saveFailed": "Не удалось сохранить рецепт: {error}",
       "friends.loadFailed": "Не удалось загрузить рецепты друзей: {error}",
-      "friends.shareWithFriends": "Поделиться с друзьями",
-      "friends.shareHint": "Подписанные на вас друзья увидят этот рецепт.",
       "friends.featureUnavailable": "Функция «Друзья» требует SQL-миграции. Выполните sql/friends-migration.sql.",
       "friends.profileMissing": "Профиль не настроен. Выйдите и войдите снова, или выполните sql/friends-migration.sql."
     }

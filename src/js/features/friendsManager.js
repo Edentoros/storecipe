@@ -25,9 +25,7 @@
       friendsList,
       friendsEmpty,
       toggleFriendsFeed,
-      recipeListHeading,
-      shareWithFriendsRow,
-      shareWithFriendsInput
+      recipeListHeading
     } = dom;
     const { escapeHtml } = helpers;
     const {
@@ -63,7 +61,6 @@
       state.isFriendsAvailable = false;
       if (openFriends) openFriends.classList.add("hidden");
       if (toggleFriendsFeed) toggleFriendsFeed.classList.add("hidden");
-      if (shareWithFriendsRow) shareWithFriendsRow.classList.add("hidden");
       setAppStatus(t("friends.featureUnavailable"));
       if (err && logSupabaseError) logSupabaseError("friends infra", err);
     }
@@ -79,16 +76,6 @@
       openFriends.classList.toggle("hidden", !show);
     }
 
-    function updateShareToggleVisibility() {
-      if (!shareWithFriendsRow) return;
-      const hasFollowers = false; // unused — show if user has friends OR could share. We always show when feature available.
-      const show = Boolean(state.currentUser) && state.isFriendsAvailable;
-      shareWithFriendsRow.classList.toggle("hidden", !show);
-      // The reverse direction would be more accurate (only show if someone follows
-      // me), but knowing followers requires another query. For now show unconditionally
-      // when the feature is available — sharing without followers just no-ops.
-      void hasFollowers;
-    }
 
     function updateFeedToggleVisibility() {
       if (!toggleFriendsFeed) return;
@@ -364,7 +351,6 @@
       if (friendsEmpty) friendsEmpty.classList.remove("hidden");
       closeModal();
       updateHeaderButtonVisibility();
-      updateShareToggleVisibility();
       updateFeedToggleVisibility();
     }
 
@@ -379,7 +365,6 @@
       renderFriendsList,
       renderInviteCode,
       updateHeaderButtonVisibility,
-      updateShareToggleVisibility,
       updateFeedToggleVisibility,
       resetForSignOut,
       getFriendDisplayName,

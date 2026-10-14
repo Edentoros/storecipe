@@ -24,6 +24,14 @@ const IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
 const IMAGE_ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
 const RECIPE_IMPORT_FUNCTION = "recipe-import";
 
+// Features switched off for now. Flip to true to bring one back; app.js turns
+// these into body classes and the stylesheet hides the matching controls.
+const FEATURES = {
+  shopping: false,
+  planner: false,
+  friends: false
+};
+
 const RECIPE_CATEGORIES = [
   "Breakfast", "Lunch", "Dinner", "Snack", "Dessert", "Drinks", "Other"
 ];
@@ -50,5 +58,6 @@ window.StorecipeConstants = {
   IMAGE_MAX_SIZE_BYTES,
   IMAGE_ALLOWED_TYPES,
   RECIPE_IMPORT_FUNCTION,
-  RECIPE_CATEGORIES
+  RECIPE_CATEGORIES,
+  FEATURES
 };

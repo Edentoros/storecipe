@@ -21,7 +21,8 @@
     IMAGE_MAX_SIZE_BYTES,
     IMAGE_ALLOWED_TYPES,
     RECIPE_IMPORT_FUNCTION,
-    RECIPE_CATEGORIES
+    RECIPE_CATEGORIES,
+    FEATURES
   } = window.StorecipeConstants;
   const { getDomRefs } = window.StorecipeDomRefs;
   const {
@@ -166,8 +167,6 @@
     friendsEmpty,
     toggleFriendsFeed,
     recipeListHeading,
-    shareWithFriendsRow,
-    shareWithFriendsInput,
     addButtonWideQuery
   } = getDomRefs();
 
@@ -176,6 +175,12 @@
   const t = (key, params) => i18n.t(key, params);
   // Apply initial DOM translations as soon as the DOM is parsed (defer scripts run after).
   i18n.applyToDom(document);
+
+  // Switched-off features are hidden by CSS, so the many places that show/hide
+  // these controls don't each need to know about the switch.
+  Object.entries(FEATURES).forEach(([name, enabled]) => {
+    document.body.classList.toggle(`feature-off-${name}`, !enabled);
+  });
 
   // Supabase restores the persisted session asynchronously. onAuthStateChange
   // fires INITIAL_SESSION on its own schedule and its handler is not awaited by
@@ -547,9 +552,6 @@
       difficultyInput.value = String(normalizeDifficulty(recipe.difficulty));
       syncDifficultyUi();
     }
-    if (shareWithFriendsInput) {
-      shareWithFriendsInput.checked = Boolean(recipe.is_shared_with_friends);
-    }
     recipeForm.elements.image.value = "";
     if (imageUrlInput) {
       imageUrlInput.value = "";
@@ -566,7 +568,6 @@
     state.pendingImportSourceUrl = "";
     syncDifficultyUi();
     recipeMetaManager.resetValidationUi();
-    if (shareWithFriendsInput) shareWithFriendsInput.checked = false;
     setRecipeFormMode(null);
     hideEditImageTools();
     clearDraft();
@@ -740,8 +741,7 @@
     dom: {
       friendsModal, openFriends, closeFriends, myInviteCode, copyInviteCode,
       addFriendTabCode, addFriendTabEmail, addFriendInput, addFriendButton,
-      friendsList, friendsEmpty, toggleFriendsFeed, recipeListHeading,
-      shareWithFriendsRow, shareWithFriendsInput
+      friendsList, friendsEmpty, toggleFriendsFeed, recipeListHeading
     },
     state,
     helpers: { escapeHtml },
@@ -975,8 +975,9 @@
       image_url: imagePath,
       user_id: state.currentUser.id
     };
-    if (state.isFriendsAvailable && shareWithFriendsInput) {
-      basePayload.is_shared_with_friends = Boolean(shareWithFriendsInput.checked);
+    // Every recipe is visible to friends; there's no per-recipe choice.
+    if (state.isFriendsAvailable) {
+      basePayload.is_shared_with_friends = true;
     }
     if (state.pendingImportSourceUrl && state.hasSourceUrlColumn) {
       basePayload.source_url = state.pendingImportSourceUrl;
@@ -1134,8 +1135,9 @@
       image_url: nextImagePath,
       updated_at: new Date().toISOString()
     };
-    if (state.isFriendsAvailable && shareWithFriendsInput) {
-      basePayload.is_shared_with_friends = Boolean(shareWithFriendsInput.checked);
+    // Every recipe is visible to friends; there's no per-recipe choice.
+    if (state.isFriendsAvailable) {
+      basePayload.is_shared_with_friends = true;
     }
     const catFavFields = state.hasCategoryFavColumns ? { category } : {};
     const payload = state.hasRecipeMetaColumns ? { ...basePayload, ...recipeMeta, ...catFavFields } : { ...basePayload, ...catFavFields };
@@ -2029,7 +2031,7 @@
       notes: source.notes || null,
       image_url: source.image_url || null,
       user_id: state.currentUser.id,
-      is_shared_with_friends: false
+      is_shared_with_friends: true
     };
     if (state.hasRecipeMetaColumns) {
       payload.prep_time = source.prep_time ?? source.prepTime ?? null;
@@ -2719,7 +2721,6 @@
       // Friends: profile + friendships load in background; failures degrade gracefully.
       friendsManager.loadMyProfile().then(() => {
         friendsManager.updateHeaderButtonVisibility();
-        friendsManager.updateShareToggleVisibility();
       });
       friendsManager.loadFriends({ refreshUi: true });
     }

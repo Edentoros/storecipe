@@ -102,8 +102,6 @@ function getDomRefs() {
     friendsEmpty: document.getElementById("friendsEmpty"),
     toggleFriendsFeed: document.getElementById("toggleFriendsFeed"),
     recipeListHeading: document.getElementById("recipeListHeading"),
-    shareWithFriendsRow: document.getElementById("shareWithFriendsRow"),
-    shareWithFriendsInput: document.getElementById("shareWithFriendsInput"),
     addButtonWideQuery: window.matchMedia("(min-width: 768px)")
   };
 }

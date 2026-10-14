@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Storecipe</title>
-    <link rel="stylesheet" href="dist/style.css?v=20261014d" />
+    <link rel="stylesheet" href="dist/style.css?v=20261014e" />
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -373,14 +373,6 @@
             <span id="difficultyValue" class="difficulty-value">4</span>
           </div>
 
-          <div id="shareWithFriendsRow" class="share-with-friends-row hidden">
-            <label class="share-with-friends-row__label">
-              <input id="shareWithFriendsInput" type="checkbox" />
-              <span data-i18n="friends.shareWithFriends">Share with friends</span>
-            </label>
-            <p class="share-with-friends-row__hint" data-i18n="friends.shareHint">Friends following you will see this recipe.</p>
-          </div>
-
           <div class="form-actions">
             <button id="saveRecipeButton" type="submit" data-i18n="form.save">Save Recipe</button>
             <button id="cancelEditButton" class="button button--ghost hidden" type="button" data-i18n="form.cancel">Cancel editing</button>
@@ -491,6 +483,6 @@
     <script defer src="src/js/features/recipeRenderer.js"></script>
     <script defer src="src/js/features/friendsManager.js"></script>
     <script defer src="src/js/services/supabaseServices.js"></script>
-    <script defer src="app.js?v=20261014d"></script>
+    <script defer src="app.js?v=20261014e"></script>
   </body>
 </html>
