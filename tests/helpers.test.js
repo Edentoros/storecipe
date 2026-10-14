@@ -42,26 +42,35 @@ describe("formatDuration", () => {
 });
 
 // --- parseDurationText ---
+// Results come from the vm sandbox, whose objects have a different prototype;
+// copy them into this realm so deepEqual compares values only.
+const parseDuration = (value) => ({ ...helpers.parseDurationText(value) });
 describe("parseDurationText", () => {
   it("returns empty for blank input", () => {
-    assert.deepEqual(helpers.parseDurationText(""), { hours: "", minutes: "" });
-    assert.deepEqual(helpers.parseDurationText(null), { hours: "", minutes: "" });
+    assert.deepEqual(parseDuration(""), { hours: "", minutes: "" });
+    assert.deepEqual(parseDuration(null), { hours: "", minutes: "" });
   });
 
   it("parses colon format", () => {
-    assert.deepEqual(helpers.parseDurationText("1:30"), { hours: "1", minutes: "30" });
+    assert.deepEqual(parseDuration("1:30"), { hours: "1", minutes: "30" });
   });
 
   it("parses h/m format", () => {
-    assert.deepEqual(helpers.parseDurationText("2h 15m"), { hours: "2", minutes: "15" });
+    assert.deepEqual(parseDuration("2h 15m"), { hours: "2", minutes: "15" });
   });
 
   it("parses minutes-only number", () => {
-    assert.deepEqual(helpers.parseDurationText("45"), { hours: "0", minutes: "45" });
+    assert.deepEqual(parseDuration("45"), { hours: "0", minutes: "45" });
+  });
+
+  it("parses Russian units", () => {
+    assert.deepEqual(parseDuration("1 час"), { hours: "1", minutes: "0" });
+    assert.deepEqual(parseDuration("1 час 15 минут"), { hours: "1", minutes: "15" });
+    assert.deepEqual(parseDuration("40 мин"), { hours: "0", minutes: "40" });
   });
 
   it("parses two numbers as hours and minutes", () => {
-    assert.deepEqual(helpers.parseDurationText("1 30"), { hours: "1", minutes: "30" });
+    assert.deepEqual(parseDuration("1 30"), { hours: "1", minutes: "30" });
   });
 });
 
