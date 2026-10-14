@@ -878,6 +878,9 @@
     const uniqueCategories = new Set(recipes.map((r) => r.category).filter(Boolean));
     const showCategoryFilter = showFilters && uniqueCategories.size > 1;
 
+    if (searchPanel) {
+      searchPanel.classList.toggle("recipe-search--empty", !recipes.length && !state.isFriendsFeedActive);
+    }
     // Filters sit behind the Filters button, offered once there's enough to filter.
     if (toggleFilters) toggleFilters.classList.toggle("hidden", !showFilters);
     if (!showFilters) setFiltersOpen(false);
@@ -928,10 +931,8 @@
       state.recipes = recipeRenderer.normalizeLoadedRecipes(data, DEFAULT_DIFFICULTY);
       rerenderList();
 
+      // An empty account gets the welcome card in the list, not a pop-up.
       void hydrateImagesInBackground(state.recipes);
-      if (!state.recipes.length) {
-        setAppStatus(t("status.noRecipesForAccount"));
-      }
     } finally {
       endRecipeListLoad();
     }
@@ -2609,6 +2610,11 @@
   });
 
   recipeList.addEventListener("click", (event) => {
+    if (event.target.closest("[data-action='add-first']")) {
+      toggleAddRecipe.click();
+      return;
+    }
+
     const favTrigger = event.target.closest("[data-action='toggle-fav']");
     if (favTrigger) {
       const recipeId = favTrigger.dataset.id;

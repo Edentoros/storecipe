@@ -240,7 +240,7 @@
 
       const saveButton = document.createElement("button");
       saveButton.type = "button";
-      saveButton.className = "button button--secondary";
+      saveButton.className = "button";
       saveButton.dataset.action = "inline-save-field";
       saveButton.dataset.field = normalizedField;
       saveButton.textContent = t("inlineEdit.save");

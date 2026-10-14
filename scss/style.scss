@@ -4,7 +4,12 @@
 }
 body {
   margin: 0;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  /* Inter everywhere; the fallbacks are each platform's own modern UI font. */
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* So the background gradient covers short pages to the bottom. */
+  min-height: 100vh;
   background: linear-gradient(180deg, #f8f5ee 0%, #f6f2eb 100%);
   color: #1f2933;
 }
@@ -2597,29 +2602,6 @@ body.theme-dark #closeDetail {
   .app {
     padding: 1.5rem;
   }
-  .recipe-card {
-    display: grid;
-    grid-template-columns: 200px 1fr;
-  }
-  .recipe-card .recipe-card__media,
-  .recipe-card .recipe-card__media--empty {
-    height: auto;
-    min-height: 148px;
-    align-self: stretch;
-  }
-  .recipe-card .recipe-card__body {
-    align-self: center;
-    /* Clear the absolutely-positioned fav button, which sits over this column. */
-    padding-right: 3rem;
-  }
-  .recipe-list-skeleton {
-    display: grid;
-    grid-template-columns: 200px 1fr;
-  }
-  .recipe-list-skeleton__image {
-    height: 100%;
-    min-height: 148px;
-  }
 }
 @media print {
   body {
@@ -3106,4 +3088,512 @@ body.theme-dark .import-notice__action:hover {
 body.theme-dark .import-notice__action--primary,
 body.theme-dark .import-notice__action--primary:hover {
   color: #fff;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Visual refresh: Inter, one accent colour, photo-first cards in a grid,
+   fewer nested boxes, a tidier recipe page and a few gentle transitions.
+   ════════════════════════════════════════════════════════════════════════ */
+$accent: #cc5a24;
+$accent-hover: #b34d1c;
+$accent-soft: #fbeee6;
+$ink: #1f2933;
+$muted: #627d98;
+$line: #ebe4d9;
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #e3a27c;
+  box-shadow: 0 0 0 3px rgba(204, 90, 36, 0.15);
+}
+
+/* ── Header: brand mark, quiet tool buttons ─────────────────────────────── */
+.app__header {
+  margin-bottom: 1.25rem;
+}
+.app__header h1.app__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+.app__brand-mark {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: $accent no-repeat center / 21px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 11h18a9 9 0 0 1-18 0Z'/%3E%3Cpath d='M9 7c0-1.5 1.5-2 1.5-3.5'/%3E%3Cpath d='M14 7c0-1.5 1.5-2 1.5-3.5'/%3E%3C/svg%3E");
+  box-shadow: 0 4px 12px rgba(204, 90, 36, 0.28);
+}
+
+/* One accent: secondary buttons are neutral instead of navy. */
+.button--secondary {
+  background: #fff;
+  color: #243b53;
+  box-shadow: inset 0 0 0 1px #d9e2ec;
+}
+@media (hover: hover) {
+  .button--secondary:hover:not(:disabled) {
+    filter: none;
+    background: #f7f9fb;
+    box-shadow: inset 0 0 0 1px #c3d0dd, 0 6px 14px rgba(20, 31, 43, 0.08);
+  }
+}
+.app__tool-button {
+  background: rgba(255, 255, 255, 0.8);
+  color: #334e68;
+  box-shadow: inset 0 0 0 1px $line;
+  font-weight: 600;
+}
+body.theme-dark .button--secondary,
+body.theme-dark .app__tool-button {
+  background: #1a2d40;
+  color: #d9e2ec;
+  box-shadow: inset 0 0 0 1px #2f4a63;
+}
+@media (hover: hover) {
+  body.theme-dark .button--secondary:hover:not(:disabled) {
+    background: #223a52;
+    box-shadow: inset 0 0 0 1px #3d5c7a;
+  }
+}
+
+/* ── Panels: softer, and the recipe list sits straight on the page ──────── */
+.panel {
+  border-radius: 18px;
+  padding: 1.15rem;
+  box-shadow: 0 1px 2px rgba(31, 41, 51, 0.04), 0 12px 32px rgba(31, 41, 51, 0.06);
+}
+.panel.panel--list,
+body.theme-dark .panel.panel--list {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+.panel--list .panel__title-row {
+  margin-bottom: 1rem;
+}
+.panel--list .panel__title-row > h2 {
+  font-size: 1.55rem;
+}
+.recipe-search__bar input {
+  background: #fff;
+}
+.recipe-search--empty {
+  display: none;
+}
+.recipe-search__bar .recipe-search__filters-toggle {
+  background: #fff;
+  color: #334e68;
+  box-shadow: inset 0 0 0 1px #d9e2ec;
+}
+body.theme-dark .recipe-search__bar .recipe-search__filters-toggle {
+  background: #0f1b2a;
+  color: #d9e2ec;
+  box-shadow: inset 0 0 0 1px #334e68;
+}
+
+/* ── Recipe cards: photo first, in a grid ───────────────────────────────── */
+/* :not(.hidden) so the .hidden utility (defined earlier) still wins while loading. */
+.recipe-list:not(.hidden),
+.recipe-list-loading:not(.hidden) {
+  display: grid;
+}
+.recipe-list,
+.recipe-list-loading {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+@media (min-width: 560px) {
+  .recipe-list,
+  .recipe-list-loading {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1.15rem;
+  }
+}
+.recipe-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  border-color: $line;
+  box-shadow: 0 1px 2px rgba(31, 41, 51, 0.04);
+}
+@media (hover: hover) {
+  .recipe-card:hover {
+    transform: translateY(-3px);
+    border-color: #e2d8ca;
+    box-shadow: 0 14px 30px rgba(31, 41, 51, 0.1);
+  }
+}
+.recipe-card .recipe-card__media,
+.recipe-card .recipe-card__media--empty {
+  flex: 0 0 auto;
+  height: auto;
+  aspect-ratio: 4 / 3;
+}
+.recipe-card .recipe-card__media > img {
+  transition: transform 0.4s ease;
+}
+@media (hover: hover) {
+  .recipe-card:hover .recipe-card__media > img {
+    transform: scale(1.04);
+  }
+}
+/* Phones: two compact columns, so more than a couple of recipes fit on screen.
+   Small cards keep the title and cooking time; the description is dropped. */
+@media (max-width: 559px) {
+  .recipe-list:not(.hidden),
+  .recipe-list-loading:not(.hidden) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+  .recipe-card .recipe-card__body {
+    padding: 0.65rem 0.75rem 0.8rem;
+  }
+  .recipe-card .recipe-card__body h3 {
+    font-size: 0.95rem;
+  }
+  .recipe-card .recipe-card__body .recipe-card__description {
+    display: none;
+  }
+  .recipe-card .recipe-card__category-badge {
+    font-size: 0.64rem;
+    margin-bottom: 0.2rem;
+  }
+  .recipe-card .recipe-card__body .recipe-card__meta {
+    padding-top: 0.5rem;
+  }
+  .recipe-card .recipe-card__body .recipe-card__meta .recipe-card__chip:not(:first-child) {
+    display: none;
+  }
+  .recipe-card .recipe-card__fav-button {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+    top: 6px;
+    right: 6px;
+  }
+  .recipe-card .recipe-card__image--placeholder::after {
+    width: 32px;
+    height: 32px;
+  }
+  .recipe-list-skeleton__body {
+    padding: 0.65rem 0.75rem;
+  }
+}
+.recipe-card .recipe-card__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  padding: 0.85rem 1rem 1rem;
+}
+.recipe-card .recipe-card__body h3 {
+  font-size: 1.08rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.recipe-card .recipe-card__body .recipe-card__description {
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: 0.88rem;
+  color: $muted;
+}
+/* Category as a small label above the title instead of a pill below it. */
+.recipe-card .recipe-card__category-badge {
+  order: -1;
+  align-self: flex-start;
+  margin: 0 0 0.3rem;
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  color: $accent;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.recipe-card .recipe-card__body .recipe-card__meta {
+  margin-top: auto;
+  padding-top: 0.75rem;
+}
+.recipe-card .recipe-card__body .recipe-card__meta:first-child,
+.recipe-card .recipe-card__body h3 + .recipe-card__meta {
+  padding-top: 0.6rem;
+}
+.recipe-card__chip {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: $muted;
+}
+
+/* Skeleton matches the card: photo on top. */
+.recipe-list-skeleton {
+  display: block;
+  border-radius: 16px;
+  border-color: $line;
+}
+.recipe-list-skeleton__image {
+  height: auto;
+  aspect-ratio: 4 / 3;
+}
+
+/* ── Photo placeholders, tinted by category ─────────────────────────────── */
+[data-category] {
+  --ph-a: #f3ede4;
+  --ph-b: #e7dccd;
+}
+[data-category="breakfast"] { --ph-a: #fdf1d8; --ph-b: #f8dfa9; }
+[data-category="lunch"] { --ph-a: #e9f3e3; --ph-b: #cfe5c3; }
+[data-category="dinner"] { --ph-a: #fbe7dc; --ph-b: #f3c7ae; }
+[data-category="soups"] { --ph-a: #fdeed8; --ph-b: #f6d2a2; }
+[data-category="snack"] { --ph-a: #f0e8f8; --ph-b: #dccbef; }
+[data-category="dessert"] { --ph-a: #fbe6ee; --ph-b: #f2c4d6; }
+[data-category="drinks"] { --ph-a: #e2f1f6; --ph-b: #c1e0ea; }
+.recipe-card .recipe-card__media--empty,
+.recipe-card .recipe-card__media--empty .recipe-card__image--placeholder,
+.recipe-detail-card .recipe-detail-card__image--placeholder {
+  background: linear-gradient(135deg, var(--ph-a, #f3ede4) 0%, var(--ph-b, #e7dccd) 100%);
+}
+.recipe-card .recipe-card__image--placeholder::after,
+.recipe-detail-card .recipe-detail-card__image--placeholder::after {
+  opacity: 0.55;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23866a52' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 11h18a9 9 0 0 1-18 0Z'/%3E%3Cpath d='M9 7c0-1.5 1.5-2 1.5-3.5'/%3E%3Cpath d='M14 7c0-1.5 1.5-2 1.5-3.5'/%3E%3C/svg%3E");
+}
+.recipe-card .recipe-card__image--placeholder::after {
+  width: 40px;
+  height: 40px;
+}
+/* .recipe-card__media > .recipe-card__image sets display:block, which left the
+   icon (an inline ::after) with no size, so it never showed. */
+.recipe-card .recipe-card__media > .recipe-card__image--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+body.theme-dark .recipe-card .recipe-card__media--empty,
+body.theme-dark .recipe-card .recipe-card__media--empty .recipe-card__image--placeholder,
+body.theme-dark .recipe-detail-card .recipe-detail-card__image--placeholder {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--ph-a, #f3ede4) 14%, #13243a) 0%,
+    color-mix(in srgb, var(--ph-b, #e7dccd) 22%, #13243a) 100%
+  );
+}
+body.theme-dark .recipe-card .recipe-card__image--placeholder::after,
+body.theme-dark .recipe-detail-card .recipe-detail-card__image--placeholder::after {
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c9b8a6' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 11h18a9 9 0 0 1-18 0Z'/%3E%3Cpath d='M9 7c0-1.5 1.5-2 1.5-3.5'/%3E%3Cpath d='M14 7c0-1.5 1.5-2 1.5-3.5'/%3E%3C/svg%3E");
+}
+
+/* ── Welcome and empty states ───────────────────────────────────────────── */
+.recipe-welcome,
+.recipe-list > .empty {
+  grid-column: 1 / -1;
+}
+.recipe-welcome {
+  text-align: center;
+  padding: 2.75rem 1.25rem 2.5rem;
+  background: #fff;
+  border: 1px dashed #e0d5c6;
+  border-radius: 20px;
+  animation: view-in 0.3s ease-out;
+}
+.recipe-welcome__art {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.1rem;
+  border-radius: 24px;
+  background: $accent-soft no-repeat center / 42px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cc5a24' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 11h18a9 9 0 0 1-18 0Z'/%3E%3Cpath d='M9 7c0-1.5 1.5-2 1.5-3.5'/%3E%3Cpath d='M14 7c0-1.5 1.5-2 1.5-3.5'/%3E%3C/svg%3E");
+}
+.recipe-welcome h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.35rem;
+}
+.recipe-welcome p {
+  margin: 0 auto 1.4rem;
+  max-width: 36ch;
+  color: $muted;
+  line-height: 1.5;
+}
+.recipe-welcome .recipe-welcome__cta {
+  margin-top: 0;
+  min-height: 44px;
+  padding: 0.65rem 1.4rem;
+  border-radius: 10px;
+}
+.recipe-list > .empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: $muted;
+}
+body.theme-dark .recipe-welcome {
+  background: #13243a;
+  border-color: #2f4a63;
+}
+body.theme-dark .recipe-welcome__art {
+  background-color: rgba(204, 90, 36, 0.16);
+}
+body.theme-dark .recipe-welcome p,
+body.theme-dark .recipe-list > .empty {
+  color: #9fb3c8;
+}
+
+/* ── Recipe page ────────────────────────────────────────────────────────── */
+/* A plain link-style "back" at the top. It used to float over the content
+   while scrolling and could cover the recipe title. */
+#closeDetail,
+body.theme-dark #closeDetail {
+  position: static;
+  box-shadow: none;
+  background: transparent;
+  padding-left: 0.1rem;
+  margin-bottom: 0.6rem;
+  color: $muted;
+}
+@media (hover: hover) {
+  #closeDetail:hover:not(:disabled),
+  body.theme-dark #closeDetail:hover:not(:disabled) {
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+    color: $accent;
+  }
+}
+body.theme-dark #closeDetail {
+  color: #9fb3c8;
+}
+.recipe-detail-card .recipe-detail-card__image,
+.recipe-detail-card .recipe-detail-card__image-wrap {
+  border-radius: 16px;
+  margin-top: 0;
+}
+/* No photo: a short tinted band, not a big empty box. */
+.recipe-detail-card .recipe-detail-card__image--placeholder {
+  min-height: 0;
+  height: 112px;
+}
+.recipe-detail-card .recipe-detail-card__image--placeholder::after {
+  width: 40px;
+  height: 40px;
+}
+.recipe-detail-card h2 {
+  font-size: clamp(1.6rem, 4.5vw, 2.15rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+.recipe-detail-card .recipe-detail-card__category-badge {
+  background-color: $accent-soft;
+  color: #9a3f14;
+  font-weight: 600;
+}
+body.theme-dark .recipe-detail-card .recipe-detail-card__category-badge,
+body.theme-dark .recipe-detail-card__category-badge {
+  background-color: rgba(204, 90, 36, 0.18);
+  color: #f3b48f;
+}
+.recipe-detail-card .recipe-detail-card__meta {
+  border-color: $line;
+}
+.recipe-stat__value {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.difficulty-meter {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  margin-left: 0.5rem;
+}
+.difficulty-meter span {
+  width: 4px;
+  height: 12px;
+  border-radius: 2px;
+  background: #e6ddd0;
+}
+.difficulty-meter span.is-on {
+  background: $accent;
+}
+body.theme-dark .difficulty-meter span {
+  background: #2f4a63;
+}
+body.theme-dark .difficulty-meter span.is-on {
+  background: #e07a45;
+}
+
+/* Ingredients in a soft box; beside the method on wide screens. */
+.recipe-detail-card__columns > .recipe-detail-card__section[data-field="ingredients"] {
+  margin-top: 1.25rem;
+  padding: 0.25rem 1.1rem 1.1rem;
+  border-radius: 16px;
+  background: #faf6f0;
+}
+body.theme-dark .recipe-detail-card__columns > .recipe-detail-card__section[data-field="ingredients"] {
+  background: #10202f;
+}
+@media (min-width: 820px) {
+  .recipe-detail-card__columns {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 2.25rem;
+    align-items: start;
+  }
+  .recipe-detail-card__columns > .recipe-detail-card__section[data-field="method"] > h3 {
+    margin-top: 1.25rem;
+  }
+}
+.method-list__step::before {
+  background: $accent-soft;
+  color: #9a3f14;
+}
+body.theme-dark .method-list__step::before {
+  background: rgba(204, 90, 36, 0.18);
+  color: #f3b48f;
+}
+
+/* Actions size to their labels (an older rule stretched them to equal widths). */
+.recipe-detail-card .recipe-detail-card__actions .button {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 0.6rem 1.1rem;
+}
+.recipe-detail-card .recipe-detail-card__actions {
+  border-color: $line;
+}
+
+/* ── Gentle transitions between screens ─────────────────────────────────── */
+@keyframes view-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+/* Runs each time a screen appears (display: none → shown restarts it).
+   No fill-mode, so if it never runs the content is simply visible. */
+.panel--list:not(.hidden),
+#addRecipeSection:not(.hidden),
+#recipeDetail:not(.hidden) {
+  animation: view-in 0.26s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel--list:not(.hidden),
+  #addRecipeSection:not(.hidden),
+  #recipeDetail:not(.hidden),
+  .recipe-welcome {
+    animation: none;
+  }
+  .recipe-card,
+  .recipe-card .recipe-card__media > img {
+    transition: none;
+  }
 }

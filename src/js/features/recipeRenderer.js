@@ -147,7 +147,17 @@ function createRecipeRenderer({
 
       recipeList.replaceChildren();
 
-      if (!filtered.length) {
+      const hasNoRecipesAtAll = !(Array.isArray(state.recipes) && state.recipes.length) && !state.isFriendsFeedActive;
+      if (!filtered.length && hasNoRecipesAtAll && state.currentUser) {
+        const welcome = document.createElement("div");
+        welcome.className = "recipe-welcome";
+        welcome.innerHTML = `
+          <div class="recipe-welcome__art" aria-hidden="true"></div>
+          <h3>${escapeHtml(t("list.welcomeTitle"))}</h3>
+          <p>${escapeHtml(t("list.welcomeBody"))}</p>
+          <button type="button" class="button recipe-welcome__cta" data-action="add-first">${escapeHtml(t("list.welcomeCta"))}</button>`;
+        recipeList.appendChild(welcome);
+      } else if (!filtered.length) {
         const empty = document.createElement("p");
         empty.className = "empty";
         empty.textContent = state.currentUser || !hasSupabaseConfig ? t("list.empty") : t("list.signInPrompt");
@@ -180,6 +190,7 @@ function createRecipeRenderer({
           // squarer photo makes a taller card than a wide one).
           const media = document.createElement("div");
           media.className = "recipe-card__media" + (safeImageUrl ? "" : " recipe-card__media--empty");
+          media.dataset.category = recipe.category || "other";
           media.dataset.action = "view";
           media.dataset.id = recipe.id || "";
 
@@ -296,13 +307,17 @@ function createRecipeRenderer({
         : (computedTotalTime || String(totalTimeRaw || "").trim());
       const serves = recipe.serves ?? recipe.servings ?? "";
       const difficultyNum = normalizeDifficulty(recipe.difficulty, 4);
-      const difficulty = `${difficultyNum} — ${tDifficulty(difficultyNum)}`;
+      const difficultyBars = Array.from({ length: 10 }, (_, i) => `<span${i < difficultyNum ? ' class="is-on"' : ""}></span>`).join("");
+      const difficultyHtml =
+        `${escapeHtml(tDifficulty(difficultyNum))}` +
+        `<span class="difficulty-meter" aria-hidden="true">${difficultyBars}</span>` +
+        `<span class="sr-only"> (${escapeHtml(t("detail.difficultyOutOf", { value: difficultyNum }))})</span>`;
       const metaItems = [
         { label: t("detail.metaPrep"), value: toMetaText(prepTime), field: "prep_time", editable: true, editAria: t("detail.editPrepTime") },
         { label: t("detail.metaCook"), value: toMetaText(cookingTime), field: "cooking_time", editable: true, editAria: t("detail.editCookingTime") },
         { label: t("detail.metaTotal"), value: toMetaText(totalTime) },
         { label: t("detail.metaServes"), value: toMetaText(serves) },
-        { label: t("detail.metaDifficulty"), value: toMetaText(difficulty), field: "difficulty", editable: true, editAria: t("detail.editDifficulty") }
+        { label: t("detail.metaDifficulty"), value: difficultyHtml, field: "difficulty", editable: true, editAria: t("detail.editDifficulty") }
       ].filter((item) => Boolean(item.value));
       // Stat row: label small and muted above a prominent value. The old
       // "**Label:** value" put the emphasis on the word nobody reads.
@@ -324,7 +339,7 @@ function createRecipeRenderer({
         : "";
       const imageHtml = resolvedImageUrl
         ? `<button type="button" class="recipe-detail-card__image-wrap" data-action="open-image-fullview" data-image-url="${escapeHtml(resolvedImageUrl)}" data-image-alt="${escapeHtml(recipe.title)}" aria-label="${escapeHtml(t("detail.fullImage"))}" style="--detail-img: url('${escapeHtml(resolvedImageUrl)}')"><img src="${escapeHtml(resolvedImageUrl)}" alt="${escapeHtml(recipe.title)}" /></button>`
-        : '<div class="recipe-detail-card__image recipe-detail-card__image--placeholder" aria-hidden="true"></div>';
+        : `<div class="recipe-detail-card__image recipe-detail-card__image--placeholder" data-category="${escapeHtml(recipe.category || "other")}" aria-hidden="true"></div>`;
 
       const categoryHtml = recipe.category
         ? `<span class="recipe-detail-card__category-badge">${escapeHtml(tCategory(recipe.category))}</span>`
@@ -367,6 +382,7 @@ function createRecipeRenderer({
         </div>
         ${metaHtml}
 
+        <div class="recipe-detail-card__columns">
         <section class="recipe-detail-card__section" data-field="ingredients">
           <h3 class="recipe-detail-card__editable-title">
             ${isOwner ? `<button class="inline-edit-trigger" data-action="inline-edit-field" data-field="ingredients" type="button" aria-label="${escapeHtml(t("detail.editIngredients"))}">${escapeHtml(t("detail.ingredients"))}</button>` : `<span>${escapeHtml(t("detail.ingredients"))}</span>`}
@@ -391,6 +407,7 @@ function createRecipeRenderer({
             ? `<div class="inline-edit-trigger recipe-detail-card__editable" data-action="inline-edit-field" data-field="method" data-field-content="method" role="button" tabindex="0" aria-label="${escapeHtml(t("detail.editMethod"))}">${renderMethodListHtml(recipe.method)}</div>`
             : `<div class="recipe-detail-card__editable recipe-detail-card__editable--readonly">${renderMethodListHtml(recipe.method)}</div>`}
         </section>
+        </div>
 
         ${recipe.notes
           ? `<section class="recipe-detail-card__section" data-field="notes">

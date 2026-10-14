@@ -70,11 +70,14 @@
       "category.other": "Other",
 
       // Recipe list
-      "list.title": "Recipe List",
+      "list.title": "My recipes",
+      "list.welcomeTitle": "Welcome to Storecipe",
+      "list.welcomeBody": "Save recipes from any website in seconds, or type in your family favourites.",
+      "list.welcomeCta": "Add your first recipe",
       "list.showAdd": "Show Add Recipe",
       "list.hideAdd": "Hide Add Recipe",
       "list.addNew": "Add new",
-      "list.empty": "No recipes found.",
+      "list.empty": "No recipes match your search.",
       "list.signInPrompt": "Sign in to view your recipes.",
       "list.renderError": "Could not render recipes.",
 
@@ -205,6 +208,7 @@
       "detail.metaTotal": "Total Time",
       "detail.metaServes": "Serves",
       "detail.metaDifficulty": "Difficulty",
+      "detail.difficultyOutOf": "{value} out of 10",
 
       // Difficulty labels
       "difficulty.veryEasy": "Very Easy",
@@ -340,7 +344,6 @@
       "status.couldNotEdit": "Could not find recipe to edit. Refresh and try again.",
       "status.uiMismatch": "UI mismatch detected. Reload page and ensure latest index.html is running.",
       "status.editingRecipe": "Editing recipe. Update fields and click Update Recipe.",
-      "status.noRecipesForAccount": "No recipes found for this signed-in account.",
       "status.dbMissingUserId": "Database is missing recipes.user_id. Run the security migration SQL.",
       "validation.hoursMax": "{label}: hours cannot be more than 10.",
       "validation.minutesMax": "{label}: minutes cannot be more than 60.",
@@ -451,11 +454,14 @@
       "category.drinks": "Напитки",
       "category.other": "Другое",
 
-      "list.title": "Список рецептов",
+      "list.title": "Мои рецепты",
+      "list.welcomeTitle": "Добро пожаловать в Storecipe",
+      "list.welcomeBody": "Сохраняйте рецепты с любого сайта за секунды или записывайте любимые семейные блюда.",
+      "list.welcomeCta": "Добавить первый рецепт",
       "list.showAdd": "Показать форму добавления",
       "list.hideAdd": "Скрыть форму добавления",
       "list.addNew": "Добавить",
-      "list.empty": "Рецепты не найдены.",
+      "list.empty": "Нет рецептов по вашему запросу.",
       "list.signInPrompt": "Войдите, чтобы увидеть свои рецепты.",
       "list.renderError": "Не удалось отобразить рецепты.",
 
@@ -583,6 +589,7 @@
       "detail.metaTotal": "Общее время",
       "detail.metaServes": "Порций",
       "detail.metaDifficulty": "Сложность",
+      "detail.difficultyOutOf": "{value} из 10",
 
       "difficulty.veryEasy": "Очень легко",
       "difficulty.easy": "Легко",
@@ -713,7 +720,6 @@
       "status.couldNotEdit": "Не удалось найти рецепт для редактирования. Обновите страницу.",
       "status.uiMismatch": "Обнаружено несоответствие UI. Перезагрузите страницу.",
       "status.editingRecipe": "Редактирование рецепта. Измените поля и нажмите «Обновить».",
-      "status.noRecipesForAccount": "Для этого аккаунта рецепты не найдены.",
       "status.dbMissingUserId": "В БД отсутствует recipes.user_id. Выполните SQL-миграцию безопасности.",
       "validation.hoursMax": "{label}: часов не может быть больше 10.",
       "validation.minutesMax": "{label}: минут не может быть больше 60.",
