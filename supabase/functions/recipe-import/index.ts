@@ -27,7 +27,10 @@ const corsHeaders = {
 };
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-4.1-mini";
+// Cheapest model that works with this request shape (temperature + strict JSON
+// schema). Override with the OPENAI_MODEL secret, e.g. gpt-4.1-mini for better
+// rewriting/translation. Reasoning models (gpt-5*) need request changes first.
+const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-4.1-nano";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
 

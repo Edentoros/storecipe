@@ -43,7 +43,7 @@ errors don't count.
 supabase secrets set OPENAI_API_KEY=sk-...
 # Your own user id, so you're never limited (find it with: SELECT id, email FROM auth.users;)
 supabase secrets set IMPORT_UNLIMITED_USER_IDS=<your-user-id>
-# Optional
+# Optional: default is gpt-4.1-nano (cheapest); gpt-4.1-mini rewrites/translates better
 supabase secrets set OPENAI_MODEL=gpt-4.1-mini
 supabase secrets set FREE_IMPORT_LIMIT=5
 ```
