@@ -1,8 +1,10 @@
 import {
   blockedUrlReason,
+  buildSystemPrompt,
   buildUserMessage,
   decodeHtml,
   extractJsonLdBlocks,
+  extractMainText,
   extractMetaContent,
   extractTitle,
   findRecipeNode,
@@ -12,9 +14,9 @@ import {
   normalizeAiRecipe,
   parseHttpUrl,
   recipeFromJsonLd,
+  resolveLanguage,
+  summariseStructuredRecipe,
   RECIPE_JSON_SCHEMA,
-  stripHtmlToText,
-  SYSTEM_PROMPT,
   type ImportedRecipe
 } from "./lib.ts";
 
@@ -37,7 +39,9 @@ const UNLIMITED_USER_IDS = new Set(
 );
 
 const MAX_HTML_BYTES = 1_500_000;
-const MAX_TEXT_CHARS = 18_000;
+// Blog-style sites put the recipe card (and its notes) at the end of a long
+// article, so keep enough text to reach it. ~6k tokens: still a fraction of a cent.
+const MAX_TEXT_CHARS = 24_000;
 const MAX_REDIRECTS = 5;
 const PAGE_TIMEOUT_MS = 12_000;
 // Page (12s) + AI (30s) must stay under the browser's 45s request timeout, or the
@@ -230,7 +234,14 @@ async function fetchPage(startUrl: URL): Promise<{ html: string; finalUrl: URL }
 
 // ── AI extraction ───────────────────────────────────────────────────────────
 
-async function extractWithAi(pageUrl: string, pageTitle: string, ogImage: string | null, pageText: string) {
+async function extractWithAi(
+  pageUrl: string,
+  pageTitle: string,
+  ogImage: string | null,
+  structured: ReturnType<typeof summariseStructuredRecipe> | null,
+  pageText: string,
+  language: string
+) {
   if (!OPENAI_API_KEY) {
     throw new ImportError("ai_unavailable", 503, "AI import isn't configured yet (missing OPENAI_API_KEY).");
   }
@@ -244,8 +255,8 @@ async function extractWithAi(pageUrl: string, pageTitle: string, ogImage: string
       max_completion_tokens: 3000,
       response_format: { type: "json_schema", json_schema: RECIPE_JSON_SCHEMA },
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: buildUserMessage(pageUrl, pageTitle, ogImage, pageText) }
+        { role: "system", content: buildSystemPrompt(language) },
+        { role: "user", content: buildUserMessage(pageUrl, pageTitle, ogImage, structured, pageText) }
       ]
     })
   }).catch(() => {
@@ -311,35 +322,62 @@ Deno.serve(async (request) => {
     const pageTitle = extractMetaContent(html, "og:title") || extractTitle(html) || "Imported recipe";
     const ogImage = parseHttpUrl(extractMetaContent(html, "og:image"))?.toString() || null;
 
-    // 1) Most recipe sites embed schema.org Recipe data: exact, instant and free.
-    const node = findRecipeNode(extractJsonLdBlocks(html));
-    if (node) {
-      const recipe = recipeFromJsonLd(node, sourceUrl, pageTitle, ogImage);
-      if (looksLikeRecipe(recipe)) {
-        await recordImport(caller, sourceUrl, "json-ld", "ok");
-        return jsonResponse(200, { recipe, source: "json-ld", remaining: remainingAfter(used + 1, unlimited) });
-      }
-    }
+    const language = resolveLanguage(body?.language);
 
-    // 2) Otherwise ask the AI, which also judges whether this is a recipe at all.
-    const pageText = stripHtmlToText(html).slice(0, MAX_TEXT_CHARS);
-    if (pageText.length < 80) {
+    // The site's own schema.org Recipe data, when it has any. Exact quantities,
+    // but often messy (note references, junk descriptions), so it's input for the
+    // AI editor rather than the final result.
+    const node = findRecipeNode(extractJsonLdBlocks(html));
+    const structuredRecipe = node ? recipeFromJsonLd(node, sourceUrl, pageTitle, ogImage) : null;
+    const hasStructuredRecipe = Boolean(structuredRecipe && looksLikeRecipe(structuredRecipe));
+    const pageText = extractMainText(html).slice(0, MAX_TEXT_CHARS);
+    if (!hasStructuredRecipe && pageText.length < 80) {
       throw new ImportError("no_readable_text", 422, "That page didn't have readable text to import.");
     }
-    const raw = await extractWithAi(sourceUrl, pageTitle, ogImage, pageText);
-    const recipe: ImportedRecipe = normalizeAiRecipe(raw, sourceUrl, pageTitle, ogImage);
 
-    if (raw.is_recipe !== true || !looksLikeRecipe(recipe)) {
-      // A rejected page still cost an AI call, so it uses a free import. That's
-      // what makes pointing the importer at random pages pointless.
-      await recordImport(caller, sourceUrl, "ai", "rejected");
-      return errorResponse(new ImportError("not_recipe", 422, "That page doesn't look like a cooking recipe."), {
+    const useStructuredFallback = async () => {
+      await recordImport(caller, sourceUrl, "json-ld", "ok");
+      return jsonResponse(200, {
+        recipe: structuredRecipe,
+        source: "json-ld",
+        tidied: false,
         remaining: remainingAfter(used + 1, unlimited)
       });
+    };
+
+    let raw: Record<string, unknown>;
+    try {
+      raw = await extractWithAi(
+        sourceUrl,
+        pageTitle,
+        ogImage,
+        node ? summariseStructuredRecipe(node) : null,
+        pageText,
+        language
+      );
+    } catch (error) {
+      // AI down or not configured: the site's own data is better than nothing.
+      if (hasStructuredRecipe) return await useStructuredFallback();
+      throw error;
     }
 
-    await recordImport(caller, sourceUrl, "ai", "ok");
-    return jsonResponse(200, { recipe, source: "ai", remaining: remainingAfter(used + 1, unlimited) });
+    const recipe: ImportedRecipe = normalizeAiRecipe(raw, sourceUrl, pageTitle, ogImage);
+    // Structured Recipe data is proof enough that it's a recipe, even if the
+    // model says otherwise; the AI only gets to reject pages without it.
+    const confirmedRecipe = raw.is_recipe === true || hasStructuredRecipe;
+
+    if (confirmedRecipe && looksLikeRecipe(recipe)) {
+      await recordImport(caller, sourceUrl, "ai", "ok");
+      return jsonResponse(200, { recipe, source: "ai", tidied: true, remaining: remainingAfter(used + 1, unlimited) });
+    }
+    if (hasStructuredRecipe) return await useStructuredFallback();
+
+    // A rejected page still cost an AI call, so it uses a free import. That's
+    // what makes pointing the importer at random pages pointless.
+    await recordImport(caller, sourceUrl, "ai", "rejected");
+    return errorResponse(new ImportError("not_recipe", 422, "That page doesn't look like a cooking recipe."), {
+      remaining: remainingAfter(used + 1, unlimited)
+    });
   } catch (error) {
     if (error instanceof ImportError) {
       return errorResponse(error);

@@ -358,6 +358,10 @@
     if (method) {
       recipeForm.elements.method.value = method;
     }
+    const notes = normalizeImportedText(recipe.notes);
+    if (notes && recipeForm.elements.notes) {
+      recipeForm.elements.notes.value = notes;
+    }
 
     if (prepHoursInput) prepHoursInput.value = prepHours == null ? "" : String(prepHours);
     if (prepMinutesInput) prepMinutesInput.value = prepMinutes == null ? "" : String(prepMinutes);
@@ -559,6 +563,7 @@
 
   function resetRecipeFormState() {
     recipeForm.reset();
+    state.pendingImportSourceUrl = "";
     syncDifficultyUi();
     recipeMetaManager.resetValidationUi();
     if (shareWithFriendsInput) shareWithFriendsInput.checked = false;
@@ -872,6 +877,19 @@
     }
   }
 
+  // source_url needs sql/recipe-source-url-migration.sql; until it's run, save
+  // the recipe without it rather than failing.
+  async function insertRecipeWithOptionalSource(payload) {
+    try {
+      return await insertRecipeViaRest(payload);
+    } catch (error) {
+      if (!("source_url" in payload) || !String(error?.message || "").includes("source_url")) throw error;
+      state.hasSourceUrlColumn = false;
+      const { source_url: _omitted, ...withoutSource } = payload;
+      return insertRecipeViaRest(withoutSource);
+    }
+  }
+
   async function addRecipe(formData) {
     const title = formData.get("title")?.toString().trim();
     const description = formData.get("description")?.toString().trim() || null;
@@ -908,6 +926,9 @@
         image_url: imageUrlValue,
         created_at: new Date().toISOString()
       };
+      if (state.pendingImportSourceUrl) {
+        localRecipe.source_url = state.pendingImportSourceUrl;
+      }
       if (!imageUrlValue && image instanceof File && image.size > 0) {
         localRecipe.image_url = await readFileAsDataUrl(image);
       }
@@ -957,6 +978,9 @@
     if (state.isFriendsAvailable && shareWithFriendsInput) {
       basePayload.is_shared_with_friends = Boolean(shareWithFriendsInput.checked);
     }
+    if (state.pendingImportSourceUrl && state.hasSourceUrlColumn) {
+      basePayload.source_url = state.pendingImportSourceUrl;
+    }
     const catFavFields = state.hasCategoryFavColumns ? { category, is_favourite: false } : {};
     const payload = state.hasRecipeMetaColumns ? { ...basePayload, ...recipeMeta, ...catFavFields } : { ...basePayload, ...catFavFields };
 
@@ -965,12 +989,12 @@
       let metaWarning = "";
 
       try {
-        insertedRows = await insertRecipeViaRest(payload);
+        insertedRows = await insertRecipeWithOptionalSource(payload);
       } catch (error) {
         if (state.hasRecipeMetaColumns && isMissingRecipeMetaColumns(error)) {
           state.hasRecipeMetaColumns = false;
           metaWarning = "Recipe saved, but timing/serves/difficulty fields need DB migration.";
-          insertedRows = await insertRecipeViaRest(basePayload);
+          insertedRows = await insertRecipeWithOptionalSource(basePayload);
         } else {
           throw error;
         }
@@ -1434,17 +1458,19 @@
     setAppStatus(t("status.importing"));
 
     try {
-      const data = await importRecipeFromUrlViaFunction(url);
+      const data = await importRecipeFromUrlViaFunction(url, state.currentLanguage);
       const importedRecipe = data?.recipe && typeof data.recipe === "object" ? data.recipe : null;
       if (!importedRecipe) {
         throw new Error("Import response did not include recipe data.");
       }
 
       applyImportedRecipeToForm(importedRecipe);
+      state.pendingImportSourceUrl = isValidHttpUrl(importedRecipe.source_url) ? importedRecipe.source_url : "";
       showImportQuota(data);
       if (recipeImportUrlInput) recipeImportUrlInput.value = "";
       const source = normalizeImportedText(importedRecipe.source_url) || url;
-      setAppStatus(t("status.importedFrom", { source: hostnameOf(source) }));
+      // tidied === false: the AI tidy-up wasn't available, so this is the site's raw data.
+      setAppStatus(t(data?.tidied === false ? "status.importedUntidied" : "status.importedFrom", { source: hostnameOf(source) }));
     } catch (error) {
       showImportQuota(error);
       setAppStatus(describeImportError(error));

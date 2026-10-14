@@ -32,6 +32,9 @@
       sortBy: "created_at_desc",
       hasShareColumns: true,
       shoppingListRecipeIds: [],
+      // Original page of an imported recipe, saved with it on the next save.
+      pendingImportSourceUrl: "",
+      hasSourceUrlColumn: true,
       // Friends
       myProfile: null,
       friends: [],

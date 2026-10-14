@@ -2178,6 +2178,19 @@ body.theme-dark .recipe-detail-card .recipe-detail-card__delete-button:focus {
   font-size: 0.85rem;
   color: #627d98;
 }
+.recipe-detail-card__source {
+  color: #486581;
+  font-size: 0.85rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.recipe-detail-card__source:hover,
+.recipe-detail-card__source:focus-visible {
+  text-decoration: underline;
+}
+body.theme-dark .recipe-detail-card__source {
+  color: #9fb3c8;
+}
 .recipe-detail-card .recipe-detail-card__image--placeholder {
   display: flex;
   align-items: center;

@@ -511,8 +511,8 @@ function createSupabaseServices({ config, state, helpers }) {
   }
 
   // The prompt is owned by the server; the browser only ever sends the link.
-  function importRecipeFromUrlViaFunction(url) {
-    return callRecipeImportFunction({ url });
+  function importRecipeFromUrlViaFunction(url, language) {
+    return callRecipeImportFunction({ url, language });
   }
 
   function fetchImportQuotaViaFunction() {

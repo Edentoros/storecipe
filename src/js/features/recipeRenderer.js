@@ -329,6 +329,18 @@ function createRecipeRenderer({
       const categoryHtml = recipe.category
         ? `<span class="recipe-detail-card__category-badge">${escapeHtml(tCategory(recipe.category))}</span>`
         : "";
+      // Imported recipes keep a link to the full original (only http/https, so a
+      // stored value can never become a javascript: link).
+      let sourceHtml = "";
+      try {
+        const sourceUrl = recipe.source_url ? new URL(String(recipe.source_url)) : null;
+        if (sourceUrl && (sourceUrl.protocol === "https:" || sourceUrl.protocol === "http:")) {
+          const site = sourceUrl.hostname.replace(/^www\./, "");
+          sourceHtml = ` <a class="recipe-detail-card__source" href="${escapeHtml(sourceUrl.toString())}" target="_blank" rel="noopener noreferrer">${escapeHtml(t("detail.source", { site }))} \u2197</a>`;
+        }
+      } catch (_error) {
+        sourceHtml = "";
+      }
       const favActive = recipe.is_favourite;
       const favHeart = favActive ? "&#9829;" : "&#9825;";
       const favLabel = favActive ? t("card.removeFav") : t("card.addFav");
@@ -346,7 +358,7 @@ function createRecipeRenderer({
             <h2>${escapeHtml(recipe.title)}</h2>
             ${isOwner ? `<button class="${favClass}" type="button" data-action="toggle-fav" data-id="${recipe.id}" aria-label="${escapeHtml(favLabel)}">${favHeart}</button>` : ""}
           </div>
-          <p class="recipe-detail-card__date">${escapeHtml(dateLine)} ${categoryHtml}</p>
+          <p class="recipe-detail-card__date">${escapeHtml(dateLine)} ${categoryHtml}${sourceHtml}</p>
           ${recipe.description
             ? (isOwner
                 ? `<button class="inline-edit-trigger recipe-detail-card__description" data-action="inline-edit-field" data-field="description" data-field-content="description" type="button" aria-label="${escapeHtml(t("detail.editDescription"))}">${escapeHtml(recipe.description).replace(/\n/g, "<br />")}</button>`
