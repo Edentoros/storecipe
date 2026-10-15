@@ -2787,10 +2787,11 @@
 
   // Tapping anywhere outside an open recipe closes it, like Back. Only counts when
   // the press also started outside (so the tap that opened the recipe, or a text
-  // selection dragged out of it, doesn't close it), and not on the header,
-  // settings, overlays or toasts, or while a section is being edited.
+  // selection dragged out of it, doesn't close it), and not on the logo or
+  // header buttons, settings, overlays or toasts, or while a section is being
+  // edited. Empty header space does count.
   const OUTSIDE_CLOSE_EXCLUDED =
-    ".app__header, #authPanel, #settingsBackdrop, .modal-overlay, .image-fullview-overlay, .toast-container";
+    ".app__header a, .app__header button, #authPanel, #settingsBackdrop, .modal-overlay, .image-fullview-overlay, .toast-container";
   const isOutsideOpenRecipe = (target) =>
     !recipeDetail.classList.contains("hidden") &&
     target instanceof Element &&
