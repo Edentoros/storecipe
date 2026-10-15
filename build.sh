@@ -6,7 +6,7 @@ set -e
 
 rm -rf site
 mkdir -p site
-cp index.html confirm.html share.html app.js sw.js manifest.webmanifest site/
+cp index.html confirm.html share.html app.js sw.js manifest.webmanifest apple-touch-icon.png site/
 cp -r dist icons src site/
 rm -f site/src/js/README.md site/src/js/core/config.example.js site/src/js/core/config.js
 
