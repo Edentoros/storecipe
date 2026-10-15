@@ -2625,7 +2625,8 @@ body.theme-dark #closeDetail {
   .recipe-detail-card__add-description,
   .recipe-gallery__remove,
   .recipe-gallery__add-wrap,
-  .recipe-detail-card__meta-item .inline-edit-trigger {
+  .difficulty-meter,
+  .recipe-detail-card__image--placeholder {
     display: none !important;
   }
   .panel--detail,
@@ -2643,29 +2644,39 @@ body.theme-dark #closeDetail {
   .recipe-detail-card__image-wrap::before {
     display: none;
   }
-  .recipe-detail-card__section {
-    break-inside: avoid;
-  }
   .recipe-detail-card__section h3 {
     margin-bottom: 0.3rem;
     font-size: 1.1rem;
+    break-after: avoid;
+  }
+  .ingredient-list__item,
+  .method-list__step {
+    break-inside: avoid;
   }
   .recipe-detail-card__editable,
   .recipe-detail-card__description {
     all: unset !important;
     display: block !important;
-    white-space: pre-wrap !important;
+    white-space: normal !important;
     font-size: 0.95rem !important;
     line-height: 1.6 !important;
     color: #1f2933 !important;
   }
   .recipe-detail-card__meta {
-    display: block !important;
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 0.3rem 1.5rem !important;
   }
   .recipe-detail-card__meta-item {
     display: block !important;
     font-size: 0.9rem !important;
-    margin-bottom: 0.15rem !important;
+    margin: 0 !important;
+  }
+  .recipe-detail-card__meta-item .inline-edit-trigger {
+    all: unset !important;
+    display: inline-flex !important;
+    flex-direction: column !important;
+    gap: 0.1rem !important;
   }
   .recipe-detail-card__editable-title .inline-edit-trigger {
     all: unset !important;
@@ -3569,6 +3580,121 @@ body.theme-dark .method-list__step::before {
 }
 .recipe-detail-card .recipe-detail-card__actions {
   border-color: $line;
+}
+
+/* Editable areas on the recipe page. They share .inline-edit-trigger, whose
+   `all: unset` makes them inline; an inline box around a list (or across
+   the lines of a note) drew its outline in broken pieces. Make them blocks,
+   and show a soft tint on hover instead of an outline. */
+.recipe-detail-card .recipe-detail-card__editable {
+  display: block;
+}
+.recipe-detail-card .recipe-detail-card__editable:hover,
+.recipe-detail-card .recipe-detail-card__editable-title:hover,
+.recipe-detail-card .recipe-detail-card__meta .recipe-detail-card__meta-item--editable .inline-edit-trigger:hover {
+  background: rgba(204, 90, 36, 0.07);
+  box-shadow: none;
+}
+.recipe-detail-card .recipe-detail-card__editable:focus-visible,
+.recipe-detail-card .recipe-detail-card__editable-title:focus-visible,
+.recipe-detail-card .recipe-detail-card__meta .recipe-detail-card__meta-item--editable .inline-edit-trigger:focus-visible {
+  background: rgba(204, 90, 36, 0.07);
+  box-shadow: 0 0 0 2px rgba(204, 90, 36, 0.45);
+}
+body.theme-dark .recipe-detail-card .recipe-detail-card__editable:hover,
+body.theme-dark .recipe-detail-card .recipe-detail-card__editable-title:hover,
+body.theme-dark .recipe-detail-card .recipe-detail-card__meta .recipe-detail-card__meta-item--editable .inline-edit-trigger:hover {
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow: none;
+}
+body.theme-dark .recipe-detail-card .recipe-detail-card__editable:focus-visible,
+body.theme-dark .recipe-detail-card .recipe-detail-card__editable-title:focus-visible,
+body.theme-dark .recipe-detail-card .recipe-detail-card__meta .recipe-detail-card__meta-item--editable .inline-edit-trigger:focus-visible {
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 0 0 2px rgba(224, 122, 69, 0.6);
+}
+
+@media print {
+  @page {
+    margin: 14mm;
+  }
+  /* Dark mode's light text would print pale grey on white paper. */
+  body,
+  body.theme-dark,
+  body.theme-dark .panel,
+  .recipe-detail-card h2,
+  .recipe-detail-card section h3,
+  .recipe-stat__value,
+  body.theme-dark .recipe-stat__value {
+    color: #1f2933 !important;
+  }
+  .panel,
+  body.theme-dark,
+  body.theme-dark .panel {
+    background: #fff !important;
+  }
+  .recipe-stat__label,
+  .recipe-detail-card__date,
+  .recipe-detail-card__source {
+    color: #52606d !important;
+  }
+  /* A fade caught mid-way (e.g. printing right after opening a recipe) would
+     print the page faded or blank. */
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .recipe-detail-card .recipe-detail-card__image-wrap,
+  .recipe-detail-card .recipe-detail-card__image-wrap img {
+    min-height: 0;
+    max-height: 240px;
+  }
+  .recipe-detail-card h2 {
+    font-size: 1.7rem;
+  }
+  /* Cookbook layout on paper: ingredients beside the method. */
+  .recipe-detail-card__columns {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    gap: 8mm;
+    align-items: start;
+  }
+  .recipe-detail-card__columns > .recipe-detail-card__section[data-field="ingredients"],
+  body.theme-dark .recipe-detail-card__columns > .recipe-detail-card__section[data-field="ingredients"] {
+    margin-top: 0;
+    padding: 0;
+    background: none;
+  }
+  /* Line the two headings up at the top. */
+  .recipe-detail-card__columns > .recipe-detail-card__section {
+    margin-top: 0 !important;
+  }
+  .recipe-detail-card__columns > .recipe-detail-card__section > h3 {
+    margin-top: 0 !important;
+  }
+  .method-list__step::before,
+  body.theme-dark .method-list__step::before {
+    background: none;
+    border: 1px solid #9aa5b1;
+    color: #1f2933;
+  }
+  .recipe-detail-card .recipe-detail-card__meta,
+  body.theme-dark .recipe-detail-card .recipe-detail-card__meta {
+    border-color: #d9e2ec !important;
+    border-width: 1px 0 !important;
+  }
+  .recipe-detail-card .recipe-detail-card__category-badge,
+  body.theme-dark .recipe-detail-card .recipe-detail-card__category-badge {
+    background: none;
+    border: 1px solid #e3a27c;
+    color: #9a3f14;
+  }
+  .ingredient-list__item::before,
+  body.theme-dark .ingredient-list__item::before {
+    background: #52606d;
+  }
 }
 
 /* ── Gentle transitions between screens ─────────────────────────────────── */
