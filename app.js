@@ -48,6 +48,7 @@
     normalizeImportedText,
     parseOptionalBoundedInteger,
     validateImageFile,
+    shrinkImageForUpload,
     debounce
   } = window.StorecipeHelpers;
   const { scaleIngredients } = window.StorecipeIngredientParser;
@@ -258,7 +259,8 @@
     helpers: {
       withTimeout,
       normalizeStoragePath: normalizeStoragePathCore,
-      getDirectImageUrl
+      getDirectImageUrl,
+      shrinkImageForUpload
     }
   });
   const {

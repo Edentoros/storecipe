@@ -199,6 +199,7 @@ function createRecipeRenderer({
             image.src = safeImageUrl;
             image.alt = title;
             image.loading = "lazy";
+            image.decoding = "async";
             media.appendChild(image);
           } else {
             const placeholder = document.createElement("div");

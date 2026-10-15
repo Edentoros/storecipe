@@ -14,7 +14,9 @@ function createSupabaseServices({ config, state, helpers }) {
     RECIPE_IMPORT_FUNCTION
   } = config;
 
-  const { withTimeout, normalizeStoragePath, getDirectImageUrl } = helpers;
+  const { withTimeout, normalizeStoragePath, getDirectImageUrl, shrinkImageForUpload } = helpers;
+  // Anything still bigger than this after resizing (an unshrinkable GIF, say) is refused.
+  const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
   async function debugFetch(input, init = {}, { retries = 1 } = {}) {
     let lastError;
@@ -566,12 +568,19 @@ function createSupabaseServices({ config, state, helpers }) {
     return new File([blob], fileName, { type: contentType });
   }
 
-  async function uploadImage(file, userId) {
+  async function uploadImage(originalFile, userId) {
+    const file = shrinkImageForUpload ? await shrinkImageForUpload(originalFile) : originalFile;
+    if (file.size > MAX_UPLOAD_BYTES) {
+      throw new Error(`Image is too large (${(file.size / (1024 * 1024)).toFixed(1)} MB). Max size: 5 MB.`);
+    }
     const extension = file.name.split(".").pop() || "jpg";
     const filePath = `${userId}/${crypto.randomUUID()}.${extension}`;
 
+    // Each upload gets a new random name and is never changed, so browsers can
+    // keep it for a long time.
     const { error } = await client.storage.from(BUCKET).upload(filePath, file, {
-      cacheControl: "3600",
+      cacheControl: "31536000",
+      contentType: file.type || undefined,
       upsert: false
     });
 

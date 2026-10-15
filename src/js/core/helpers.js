@@ -277,6 +277,47 @@ function parseOptionalBoundedInteger(value, min, max) {
   return rounded;
 }
 
+// Phone photos are often 3-8 MB and 4000px wide; recipe cards show them at a
+// few hundred pixels. Resize to at most 1600px on the long side as a JPEG
+// (which also drops EXIF metadata such as GPS location). GIFs (may be
+// animated) and SVGs are left alone, as is anything that fails to decode or
+// wouldn't get smaller.
+const PHOTO_MAX_SIDE = 1600;
+const PHOTO_JPEG_QUALITY = 0.82;
+const PHOTO_SKIP_BELOW_BYTES = 300 * 1024;
+
+async function shrinkImageForUpload(file) {
+  if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type) || typeof createImageBitmap !== "function") return file;
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch (_error) {
+    return file;
+  }
+  try {
+    const scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1 && file.size <= PHOTO_SKIP_BELOW_BYTES) return file;
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) return file;
+    // JPEG has no transparency; give see-through PNGs a white background.
+    context.fillStyle = "#fff";
+    context.fillRect(0, 0, width, height);
+    context.imageSmoothingQuality = "high";
+    context.drawImage(bitmap, 0, 0, width, height);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", PHOTO_JPEG_QUALITY));
+    if (!blob || blob.size >= file.size) return file;
+    const baseName = String(file.name || "photo").replace(/\.[^.]+$/, "") || "photo";
+    return new File([blob], `${baseName}.jpg`, { type: "image/jpeg", lastModified: Date.now() });
+  } finally {
+    bitmap.close?.();
+  }
+}
+
 function validateImageFile(file, maxSizeBytes, allowedTypes) {
   if (!file) return null;
   if (allowedTypes.length > 0 && !allowedTypes.includes(file.type)) {
@@ -321,5 +362,6 @@ window.StorecipeHelpers = {
   normalizeImportedText,
   parseOptionalBoundedInteger,
   validateImageFile,
+  shrinkImageForUpload,
   debounce
 };

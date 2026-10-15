@@ -20,7 +20,9 @@ const SUPPORTED_LANGUAGES = [
   { code: "en", label: "English", flag: "🇬🇧" },
   { code: "ru", label: "Русский", flag: "🇷🇺" }
 ];
-const IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+// Photos are resized before upload (see shrinkImageForUpload), so a large phone
+// photo can be picked; the upload itself is still capped at 5 MB.
+const IMAGE_MAX_SIZE_BYTES = 25 * 1024 * 1024;
 const IMAGE_ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"];
 const RECIPE_IMPORT_FUNCTION = "recipe-import";
 
