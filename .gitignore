@@ -1,3 +1,4 @@
 node_modules/
+site/
 src/js/core/config.js
 .claude/

@@ -2917,6 +2917,10 @@
   inlineEditManager.attachListeners();
 
   detailContent.addEventListener("click", async (event) => {
+    if (event.target.closest("[data-action='print']")) {
+      window.print();
+      return;
+    }
     const scaleBtn = event.target.closest("[data-action='scale-down'], [data-action='scale-up'], [data-action='scale-reset']");
     if (scaleBtn) {
       const scaler = scaleBtn.closest(".serving-scaler");

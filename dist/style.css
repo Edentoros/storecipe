@@ -263,14 +263,6 @@ body {
   gap: 0.4rem;
 }
 
-.auth-signed-email {
-  width: 100%;
-  margin: 0;
-  color: #52606d;
-  font-size: 0.92rem;
-  word-break: break-word;
-}
-
 .auth-loading {
   width: 100%;
   margin: 0.2rem 0 0;
@@ -291,87 +283,9 @@ body {
   animation: startup-spin 0.75s linear infinite;
 }
 
-.auth-actions .theme-toggle-button,
 .auth-actions #signOutButton {
   width: 100%;
   margin-top: 0;
-}
-
-.theme-row {
-  display: flex;
-  gap: 0.4rem;
-  width: 100%;
-  align-items: stretch;
-}
-
-.theme-row .theme-toggle-button {
-  flex: 1;
-  width: auto;
-}
-
-.sunset-info-button {
-  flex: 0 0 auto;
-  box-sizing: border-box;
-  width: 36px;
-  min-width: 36px;
-  min-height: 36px;
-  align-self: stretch;
-  padding: 0;
-  margin: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #d9e2ec;
-  border-radius: 8px;
-  background: transparent;
-  color: #486581;
-  font-weight: 700;
-  font-size: 0.95rem;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.sunset-info-button:hover,
-.sunset-info-button:focus {
-  background: #f0f4f8;
-  color: #243b53;
-  outline: none;
-}
-
-.sunset-info-button[aria-expanded=true] {
-  background: #e6effa;
-  color: #243b53;
-}
-
-.sunset-info-text {
-  margin: 0.35rem 0 0;
-  padding: 0.5rem 0.6rem;
-  font-size: 0.85rem;
-  line-height: 1.35;
-  color: #486581;
-  background: #f0f4f8;
-  border-radius: 8px;
-}
-
-body.theme-dark .sunset-info-button {
-  border-color: #334e68;
-  color: #bcccdc;
-}
-
-body.theme-dark .sunset-info-button:hover,
-body.theme-dark .sunset-info-button:focus {
-  background: #243b53;
-  color: #f0f4f8;
-}
-
-body.theme-dark .sunset-info-button[aria-expanded=true] {
-  background: #243b53;
-  color: #f0f4f8;
-}
-
-body.theme-dark .sunset-info-text {
-  background: #1a3457;
-  color: #bcccdc;
 }
 
 /* ─────────── My Friends ─────────── */
@@ -607,106 +521,6 @@ body.theme-dark .friend-row__name {
 
 body.theme-dark .friend-row__sub {
   color: #9fb3c8;
-}
-
-body.theme-dark body.theme-dark .language-selector {
-  position: relative;
-  width: 100%;
-  margin-top: 0;
-}
-
-.language-toggle-button {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 0.5rem;
-}
-
-.language-toggle-button__flag {
-  font-size: 1.15rem;
-  line-height: 1;
-}
-
-.language-toggle-button__label {
-  flex: 1;
-  text-align: left;
-}
-
-.language-toggle-button__caret {
-  font-size: 0.75rem;
-  opacity: 0.7;
-  transition: transform 0.15s ease-out;
-}
-
-.language-selector--open .language-toggle-button__caret {
-  transform: rotate(180deg);
-}
-
-.language-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  margin: 0;
-  padding: 4px;
-  list-style: none;
-  background: #ffffff;
-  border: 1px solid #d9e2ec;
-  border-radius: 8px;
-  box-shadow: 0 8px 20px rgba(15, 26, 41, 0.12);
-  z-index: 20;
-}
-
-.language-menu li {
-  margin: 0;
-  padding: 0;
-}
-
-.language-option {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.4rem 0.6rem;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.language-option:hover,
-.language-option:focus {
-  background: #f0f4f8;
-  outline: none;
-}
-
-.language-option__flag {
-  font-size: 1.15rem;
-  line-height: 1;
-}
-
-.language-menu__item--selected .language-option {
-  background: #e6effa;
-  font-weight: 600;
-}
-
-body.theme-dark .language-menu {
-  background: #102a43;
-  border-color: #243b53;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-}
-
-body.theme-dark .language-option:hover,
-body.theme-dark .language-option:focus {
-  background: #1a3457;
-}
-
-body.theme-dark .language-menu__item--selected .language-option {
-  background: #243b53;
 }
 
 .settings-backdrop {
@@ -2856,10 +2670,6 @@ body.theme-dark .meal-planner__recipe-picker label {
   color: #9fb3c8;
 }
 
-body.theme-dark .auth-signed-email {
-  color: #9fb3c8;
-}
-
 body.theme-dark .auth-loading {
   color: #9fb3c8;
 }
@@ -3039,7 +2849,6 @@ body.theme-dark #closeDetail {
   }
   .app__header,
   .panel--auth,
-  .panel--search,
   .panel--list,
   .panel--form,
   #startupLoader,

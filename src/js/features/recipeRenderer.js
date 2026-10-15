@@ -443,7 +443,7 @@ function createRecipeRenderer({
           <button class="button button--secondary hidden" type="button" data-action="share" data-id="${recipe.id}">
             ${escapeHtml(t("detail.share"))}
           </button>
-          <button class="button button--ghost recipe-detail-card__print-button" type="button" onclick="window.print()">
+          <button class="button button--ghost recipe-detail-card__print-button" type="button" data-action="print">
             ${escapeHtml(t("detail.print"))}
           </button>
           <button class="button button--ghost recipe-detail-card__delete-button" type="button" data-action="delete" data-id="${recipe.id}">
@@ -452,7 +452,7 @@ function createRecipeRenderer({
           <button class="button" type="button" data-action="save-from-friend" data-id="${recipe.id}">
             ${escapeHtml(t("friends.saveToMine"))}
           </button>
-          <button class="button button--secondary recipe-detail-card__print-button" type="button" onclick="window.print()">
+          <button class="button button--secondary recipe-detail-card__print-button" type="button" data-action="print">
             ${escapeHtml(t("detail.print"))}
           </button>
           <button class="button button--secondary" type="button" data-action="add-to-shopping" data-id="${recipe.id}">

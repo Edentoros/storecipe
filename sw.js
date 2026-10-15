@@ -55,10 +55,9 @@ self.addEventListener("message", (event) => {
           data.urls.filter(isShellUrl).map((url) => {
             // cache.add() refuses the opaque responses other sites' scripts and
             // styles come back as, so fetch and store them directly.
-            // Font files are requested with CORS, so keep a CORS copy of those.
-            const sameOrigin = url.startsWith(self.location.origin);
-            const mode = sameOrigin || new URL(url).hostname === "fonts.gstatic.com" ? "cors" : "no-cors";
-            return fetch(new Request(url, { mode }))
+            // All of these hosts allow CORS, and a CORS copy can answer both
+            // CORS requests (fonts, the integrity-checked library) and plain ones.
+            return fetch(new Request(url, { mode: "cors" }))
               .then((response) => (response.ok || response.type === "opaque" ? cache.put(url, response) : null))
               .catch(() => {});
           })
