@@ -111,7 +111,6 @@
 
     return {
       isRecipeUiAvailable,
-      getClosedAddLabel,
       setToggleAddRecipeState,
       setRecipeUiEnabled,
       showListView,
