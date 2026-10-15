@@ -4548,22 +4548,6 @@ body.theme-dark .cook-mode__switch {
   right: 8px;
 }
 
-.app__settings-button.app__tool-button,
-body.theme-dark .app__settings-button.app__tool-button {
-  background: transparent;
-  box-shadow: none;
-  color: inherit;
-  opacity: 0.75;
-}
-
-@media (hover: hover) {
-  .app__settings-button.app__tool-button:hover:not(:disabled),
-  body.theme-dark .app__settings-button.app__tool-button:hover:not(:disabled) {
-    background: transparent;
-    box-shadow: none;
-    opacity: 1;
-  }
-}
 .recipe-search__bar {
   position: relative;
 }
