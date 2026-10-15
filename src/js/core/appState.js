@@ -15,7 +15,7 @@
       currentTheme: defaults.DEFAULT_THEME || "light",
       currentLanguage: defaults.DEFAULT_LANGUAGE || "en",
       isLanguagePreferenceAvailable: true,
-      isLanguageMenuOpen: false,
+      listScrollY: 0,
       isImportingRecipe: false,
       isAuthLoading: false,
       isRecipeListLoading: false,

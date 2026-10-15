@@ -1,6 +1,6 @@
 (() => {
   function createSettingsManager({ dom, state }) {
-    const { authPanel, settingsBackdrop, settingsButton, themeToggleButton, signOutButton, authEmail } = dom;
+    const { authPanel, settingsBackdrop, settingsButton, languageOptions, signOutButton, authEmail } = dom;
 
     function getSettingsFocusableElements() {
       if (!authPanel) return [];
@@ -62,11 +62,8 @@
         window.requestAnimationFrame(() => {
           positionSettingsPanel();
           const preferred =
-            themeToggleButton && !themeToggleButton.classList.contains("hidden")
-              ? themeToggleButton
-              : !signOutButton.classList.contains("hidden")
-                ? signOutButton
-                : authEmail;
+            languageOptions?.querySelector("[aria-checked='true']") ||
+            (!signOutButton.classList.contains("hidden") ? signOutButton : authEmail);
           preferred?.focus();
         });
         return;

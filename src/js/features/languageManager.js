@@ -1,6 +1,6 @@
 (() => {
   function createLanguageManager({ dom, state, config, helpers, supabaseServices, setAppStatus, i18n, onLanguageChange }) {
-    const { languageSelector, languageToggleButton, languageMenu } = dom;
+    const { languageOptions } = dom;
     const {
       DEFAULT_LANGUAGE,
       LANGUAGE_LOCAL_KEY_PREFIX,
@@ -29,36 +29,13 @@
     }
 
     function updateLanguageButtonUi() {
-      if (!languageToggleButton) return;
+      if (!languageOptions) return;
       const descriptor = getLanguageDescriptor(state.currentLanguage);
-      const flagEl = languageToggleButton.querySelector(".language-toggle-button__flag");
-      const labelEl = languageToggleButton.querySelector(".language-toggle-button__label");
-      if (flagEl) flagEl.textContent = descriptor.flag;
-      if (labelEl) labelEl.textContent = descriptor.label;
-      languageToggleButton.setAttribute("aria-label", `Language: ${descriptor.label}. Click to change.`);
-
-      if (languageMenu) {
-        Array.from(languageMenu.querySelectorAll("[role='option']")).forEach((item) => {
-          if (!(item instanceof HTMLElement)) return;
-          const isSelected = item.dataset.lang === descriptor.code;
-          item.setAttribute("aria-selected", isSelected ? "true" : "false");
-          item.classList.toggle("language-menu__item--selected", isSelected);
-        });
-      }
-    }
-
-    function setLanguageMenuOpen(nextOpen) {
-      const shouldOpen = Boolean(nextOpen);
-      state.isLanguageMenuOpen = shouldOpen;
-      if (languageMenu) {
-        languageMenu.classList.toggle("hidden", !shouldOpen);
-      }
-      if (languageToggleButton) {
-        languageToggleButton.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
-      }
-      if (languageSelector) {
-        languageSelector.classList.toggle("language-selector--open", shouldOpen);
-      }
+      languageOptions.querySelectorAll("[data-lang]").forEach((option) => {
+        const isSelected = option.dataset.lang === descriptor.code;
+        option.setAttribute("aria-checked", isSelected ? "true" : "false");
+        option.tabIndex = isSelected ? 0 : -1;
+      });
     }
 
     function setLanguage(language, options = {}) {
@@ -173,7 +150,6 @@
 
     return {
       updateLanguageButtonUi,
-      setLanguageMenuOpen,
       setLanguage,
       loadLanguagePreference,
       saveLanguagePreference

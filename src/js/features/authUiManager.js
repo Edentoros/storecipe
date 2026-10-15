@@ -9,9 +9,8 @@
       signInButton,
       signUpButton,
       signOutButton,
-      themeToggleButton,
-      languageSelector,
       signedInEmail,
+      settingsAvatar,
       authEmailLabel,
       authPasswordLabel,
       authPanel,
@@ -61,9 +60,6 @@
       }
       if (signOutButton) {
         signOutButton.disabled = isLoading || !state.currentUser;
-      }
-      if (themeToggleButton) {
-        themeToggleButton.disabled = isLoading || !state.currentUser;
       }
     }
 
@@ -185,11 +181,8 @@
         signedInEmail.classList.toggle("hidden", !isSignedIn);
         signedInEmail.textContent = isSignedIn ? String(state.currentUser?.email || "") : "";
       }
-      if (themeToggleButton) {
-        themeToggleButton.classList.remove("hidden");
-      }
-      if (languageSelector) {
-        languageSelector.classList.remove("hidden");
+      if (settingsAvatar) {
+        settingsAvatar.textContent = isSignedIn ? String(state.currentUser?.email || "?").charAt(0).toUpperCase() : "";
       }
       if (authStatusEl) {
         authStatusEl.classList.toggle("hidden", isSignedIn);
@@ -238,10 +231,7 @@
       if (signOutButton) {
         signOutButton.disabled = !isSignedIn || state.isAuthLoading;
       }
-      if (themeToggleButton) {
-        themeToggleButton.disabled = false;
-        updateThemeToggleUi();
-      }
+      updateThemeToggleUi();
       if (authLoadingEl) {
         authLoadingEl.classList.toggle("hidden", !state.isAuthLoading);
       }

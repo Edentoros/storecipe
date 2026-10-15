@@ -83,13 +83,12 @@
     appStatus,
     signInButton,
     signUpButton,
-    themeToggleButton,
-    sunsetInfoButton,
+    themeOptions,
     sunsetInfoText,
-    languageSelector,
-    languageToggleButton,
-    languageMenu,
+    languageOptions,
     signedInEmail,
+    settingsAvatar,
+    homeLink,
     signOutButton,
     authConfirmPassword,
     authConfirmPasswordLabel,
@@ -419,7 +418,7 @@
   const authUiManager = createAuthUiManager({
     dom: {
       authStatus, authLoading, authLoadingText, authEmail, authPassword,
-      signInButton, signUpButton, signOutButton, themeToggleButton, languageSelector, signedInEmail,
+      signInButton, signUpButton, signOutButton, signedInEmail, settingsAvatar,
       authEmailLabel, authPasswordLabel, authPanel, settingsButton, openShoppingList, openMealPlanner, closeSettingsButton,
       settingsBackdrop, recipeListLoading, recipeList, appStatus, toastContainer
     },
@@ -453,7 +452,7 @@
   const setAuthUi = authUiManager.setAuthUi;
 
   const themeManager = createThemeManager({
-    dom: { themeToggleButton, sunsetInfoButton, sunsetInfoText },
+    dom: { themeOptions, sunsetInfoText },
     state,
     config: { DEFAULT_THEME, THEME_LOCAL_KEY_PREFIX, THEME_PREFERENCES_TABLE },
     helpers: { normalizeTheme },
@@ -467,7 +466,7 @@
   const saveThemePreference = themeManager.saveThemePreference;
 
   const languageManager = createLanguageManager({
-    dom: { languageSelector, languageToggleButton, languageMenu },
+    dom: { languageOptions },
     state,
     config: {
       DEFAULT_LANGUAGE,
@@ -506,7 +505,6 @@
   });
   const updateLanguageButtonUi = languageManager.updateLanguageButtonUi;
   const setLanguage = languageManager.setLanguage;
-  const setLanguageMenuOpen = languageManager.setLanguageMenuOpen;
   const loadLanguagePreference = languageManager.loadLanguagePreference;
   const saveLanguagePreference = languageManager.saveLanguagePreference;
 
@@ -751,7 +749,7 @@
   }
 
   const settingsManager = createSettingsManager({
-    dom: { authPanel, settingsBackdrop, settingsButton, themeToggleButton, signOutButton, authEmail },
+    dom: { authPanel, settingsBackdrop, settingsButton, languageOptions, signOutButton, authEmail },
     state
   });
   const getSettingsFocusableElements = settingsManager.getSettingsFocusableElements;
@@ -840,6 +838,10 @@
   const rawShowDetail = recipeRenderer.showDetail;
   const hydrateImagesInBackground = recipeRenderer.hydrateImagesInBackground;
 
+  // The app restores the list position itself (see returnToList); the browser's
+  // own restoration would fight it, putting Back at the top of the list.
+  if ("scrollRestoration" in window.history) window.history.scrollRestoration = "manual";
+
   let suppressUrlUpdate = false;
   function pushRecipeUrl(recipeId) {
     if (suppressUrlUpdate || !recipeId) return;
@@ -859,8 +861,30 @@
     window.history.pushState({ recipeId: null }, "", newUrl);
   }
   function showDetail(recipe, options = {}) {
-    rawShowDetail(recipe, options);
+    const isOpeningFromList = listPanel && !listPanel.classList.contains("hidden");
+    if (isOpeningFromList) state.listScrollY = window.scrollY;
+    rawShowDetail(recipe, { ...options, scrollToDetail: false });
+    // A recipe opens at the top of the page with the header in view, without an
+    // animated scroll. Re-renders (inline edits, photo loading) keep the position.
+    if (options.scrollToDetail !== false) window.scrollTo({ top: 0, behavior: "instant" });
     if (recipe && recipe.id) pushRecipeUrl(recipe.id);
+  }
+
+  // Back to the list at the spot it was left.
+  function returnToList() {
+    setDetailOpen(false);
+    window.scrollTo({ top: state.listScrollY || 0, behavior: "instant" });
+  }
+
+  // The logo goes home: the recipe list, from wherever you are.
+  function goHome() {
+    if (state.isSettingsOpen) setSettingsOpen(false, { returnFocus: false });
+    if (state.currentUser) {
+      if (!addRecipeSection.classList.contains("hidden")) resetRecipeFormState();
+      showListView();
+      clearRecipeUrl();
+    }
+    window.scrollTo({ top: 0, behavior: "instant" });
   }
 
   function setFiltersOpen(isOpen) {
@@ -1643,60 +1667,46 @@
     });
   }
 
-  if (themeToggleButton) {
-    themeToggleButton.addEventListener("click", async () => {
-      const cycle = { light: "dark", dark: "sunset", sunset: "light" };
-      const nextTheme = cycle[state.currentTheme] || "light";
-      setTheme(nextTheme);
+  // Arrow keys move between the options of a choice group, like radio buttons.
+  function handleSegmentedKeys(group, attribute) {
+    group.addEventListener("keydown", (event) => {
+      if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+      const options = Array.from(group.querySelectorAll(`[${attribute}]`));
+      const index = options.indexOf(document.activeElement);
+      if (index === -1) return;
+      event.preventDefault();
+      const step = event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 1;
+      const next = options[(index + step + options.length) % options.length];
+      next.focus();
+      next.click();
+    });
+  }
+
+  if (themeOptions) {
+    themeOptions.addEventListener("click", async (event) => {
+      const option = event.target.closest("[data-theme]");
+      if (!option || option.dataset.theme === state.currentTheme) return;
+      setTheme(option.dataset.theme);
       if (state.currentUser) {
-        themeToggleButton.disabled = true;
-        await saveThemePreference(nextTheme);
-        themeToggleButton.disabled = false;
+        await saveThemePreference(option.dataset.theme);
         updateThemeToggleUi();
       }
     });
+    handleSegmentedKeys(themeOptions, "data-theme");
   }
 
-  if (languageToggleButton) {
-    languageToggleButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      setLanguageMenuOpen(!state.isLanguageMenuOpen);
-    });
-  }
-
-  if (languageMenu) {
-    languageMenu.addEventListener("click", async (event) => {
-      const target = event.target instanceof Element ? event.target.closest("[data-lang]") : null;
-      if (!(target instanceof HTMLElement)) return;
-      const nextLanguage = target.dataset.lang || "en";
-      if (nextLanguage === state.currentLanguage) {
-        setLanguageMenuOpen(false);
-        return;
-      }
-      setLanguage(nextLanguage);
-      setLanguageMenuOpen(false);
+  if (languageOptions) {
+    languageOptions.addEventListener("click", async (event) => {
+      const option = event.target.closest("[data-lang]");
+      if (!option || option.dataset.lang === state.currentLanguage) return;
+      setLanguage(option.dataset.lang);
       if (state.currentUser) {
-        if (languageToggleButton) languageToggleButton.disabled = true;
-        await saveLanguagePreference(nextLanguage);
-        if (languageToggleButton) languageToggleButton.disabled = false;
+        await saveLanguagePreference(option.dataset.lang);
         updateLanguageButtonUi();
       }
     });
+    handleSegmentedKeys(languageOptions, "data-lang");
   }
-
-  document.addEventListener("click", (event) => {
-    if (!state.isLanguageMenuOpen) return;
-    const target = event.target instanceof Node ? event.target : null;
-    if (languageSelector && target && languageSelector.contains(target)) return;
-    setLanguageMenuOpen(false);
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && state.isLanguageMenuOpen) {
-      setLanguageMenuOpen(false);
-      languageToggleButton?.focus();
-    }
-  });
 
   if (settingsButton && authPanel) {
     settingsButton.addEventListener("click", () => {
@@ -2771,9 +2781,18 @@
   });
 
   closeDetail.addEventListener("click", () => {
-    setDetailOpen(false);
+    returnToList();
     clearRecipeUrl();
   });
+
+  if (homeLink) {
+    homeLink.addEventListener("click", (event) => {
+      // Plain clicks stay in the app; Ctrl/Cmd-click still opens a new tab.
+      if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      goHome();
+    });
+  }
 
   window.addEventListener("popstate", (event) => {
     const targetId = event.state?.recipeId
@@ -2789,7 +2808,7 @@
           setDetailOpen(false);
         }
       } else {
-        setDetailOpen(false);
+        returnToList();
       }
     } finally {
       suppressUrlUpdate = false;

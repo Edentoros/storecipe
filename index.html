@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
-    <link rel="stylesheet" href="dist/style.css?v=20261015a" />
+    <link rel="stylesheet" href="dist/style.css?v=20261015b" />
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -20,7 +20,11 @@
     <main id="appRoot" class="app" aria-busy="true" aria-hidden="true" hidden>
       <header class="app__header">
         <div class="app__header-top">
-          <h1 class="app__brand"><span class="app__brand-mark" aria-hidden="true"></span>Storecipe</h1>
+          <h1 class="app__brand">
+            <a id="homeLink" class="app__brand-link" href="./" data-i18n-aria-label="header.home" aria-label="Storecipe home">
+              <span class="app__brand-mark" aria-hidden="true"></span>Storecipe
+            </a>
+          </h1>
           <div class="app__header-tools">
             <button id="openShoppingList" class="button button--secondary app__tool-button hidden" type="button" data-i18n-title="header.shoppingTitle" data-i18n-aria-label="header.shoppingTitle" title="Open shopping list" aria-label="Open shopping list">
               <span aria-hidden="true">&#128722;</span>
@@ -54,7 +58,10 @@
 
       <section id="authPanel" class="panel panel--auth" aria-labelledby="authPanelTitle">
         <div class="panel__title-row">
-          <h2 id="authPanelTitle" data-i18n="auth.title">Account</h2>
+          <h2 id="authPanelTitle">
+            <span class="auth-title--signed-out" data-i18n="auth.title">Account</span>
+            <span class="auth-title--signed-in" data-i18n="header.settings">Settings</span>
+          </h2>
           <button
             id="closeSettingsButton"
             class="icon-button button--ghost settings-close-button hidden"
@@ -62,7 +69,7 @@
             data-i18n-aria-label="auth.close"
             aria-label="Close settings"
           >
-            x
+            <span aria-hidden="true">&times;</span>
           </button>
         </div>
         <p id="authStatus" class="auth-status" data-i18n="auth.signInPrompt">Sign into your account or create new account.</p>
@@ -96,57 +103,41 @@
           <div class="auth-actions">
             <button id="signInButton" class="button" type="submit" data-i18n="auth.signIn">Sign In</button>
             <button id="signUpButton" class="button button--secondary" type="button" data-i18n="auth.signUp">Sign Up</button>
-            <div id="languageSelector" class="language-selector hidden">
-              <button
-                id="languageToggleButton"
-                class="button button--ghost language-toggle-button"
-                type="button"
-                aria-haspopup="listbox"
-                aria-expanded="false"
-                aria-controls="languageMenu"
-              >
-                <span class="language-toggle-button__flag" aria-hidden="true">&#127468;&#127463;</span>
-                <span class="language-toggle-button__label" data-i18n="language.label">Language</span>
-                <span class="language-toggle-button__caret" aria-hidden="true">&#9662;</span>
-              </button>
-              <ul id="languageMenu" class="language-menu hidden" role="listbox" aria-label="Choose language">
-                <li role="option" data-lang="en" aria-selected="true">
-                  <button class="language-option" type="button" data-lang="en">
-                    <span class="language-option__flag" aria-hidden="true">&#127468;&#127463;</span>
-                    <span class="language-option__label">English</span>
-                  </button>
-                </li>
-                <li role="option" data-lang="ru" aria-selected="false">
-                  <button class="language-option" type="button" data-lang="ru">
-                    <span class="language-option__flag" aria-hidden="true">&#127479;&#127482;</span>
-                    <span class="language-option__label">Русский</span>
-                  </button>
-                </li>
-              </ul>
-            </div>
-            <div class="theme-row">
-              <button id="themeToggleButton" class="button button--ghost theme-toggle-button hidden" type="button">
-                Dark theme: Off
-              </button>
-              <button
-                id="sunsetInfoButton"
-                class="sunset-info-button hidden"
-                type="button"
-                aria-expanded="false"
-                aria-controls="sunsetInfoText"
-                data-i18n-aria-label="theme.sunsetInfoAria"
-                aria-label="About sunset theme"
-              >?</button>
-            </div>
-            <p id="sunsetInfoText" class="sunset-info-text hidden" aria-live="polite"></p>
-            <p id="signedInEmail" class="auth-signed-email hidden"></p>
-            <button id="signOutButton" class="button button--ghost hidden" type="button" data-i18n="auth.signOut">Sign Out</button>
             <div id="authLoading" class="auth-loading hidden" aria-live="polite">
               <span class="auth-loading__spinner" aria-hidden="true"></span>
               <span id="authLoadingText" data-i18n="auth.signingIn">Signing in...</span>
             </div>
           </div>
         </form>
+
+        <div class="settings-account">
+          <span id="settingsAvatar" class="settings-account__avatar" aria-hidden="true"></span>
+          <div class="settings-account__text">
+            <p id="signedInEmail" class="settings-account__email hidden"></p>
+            <p class="settings-account__note" data-i18n="settings.signedIn">Signed in</p>
+          </div>
+        </div>
+
+        <div class="settings-prefs">
+          <div class="settings-field">
+            <span id="languageLabel" class="settings-field__label" data-i18n="language.label">Language</span>
+            <div id="languageOptions" class="segmented" role="radiogroup" aria-labelledby="languageLabel">
+              <button type="button" class="segmented__option" role="radio" aria-checked="true" data-lang="en">English</button>
+              <button type="button" class="segmented__option" role="radio" aria-checked="false" data-lang="ru">Русский</button>
+            </div>
+          </div>
+          <div class="settings-field">
+            <span id="themeLabel" class="settings-field__label" data-i18n="settings.theme">Theme</span>
+            <div id="themeOptions" class="segmented" role="radiogroup" aria-labelledby="themeLabel">
+              <button type="button" class="segmented__option" role="radio" aria-checked="true" data-theme="light" data-i18n="theme.option.light">Light</button>
+              <button type="button" class="segmented__option" role="radio" aria-checked="false" data-theme="dark" data-i18n="theme.option.dark">Dark</button>
+              <button type="button" class="segmented__option" role="radio" aria-checked="false" data-theme="sunset" data-i18n="theme.option.sunset">Sunset</button>
+            </div>
+            <p id="sunsetInfoText" class="settings-field__hint hidden" aria-live="polite"></p>
+          </div>
+        </div>
+
+        <button id="signOutButton" class="button button--ghost settings-signout hidden" type="button" data-i18n="auth.signOut">Sign Out</button>
       </section>
       <div id="settingsBackdrop" class="settings-backdrop hidden" aria-hidden="true"></div>
 
@@ -501,6 +492,6 @@
     <script defer src="src/js/features/friendsManager.js"></script>
     <script defer src="src/js/features/importNotice.js"></script>
     <script defer src="src/js/services/supabaseServices.js"></script>
-    <script defer src="app.js?v=20261015a"></script>
+    <script defer src="app.js?v=20261015b"></script>
   </body>
 </html>

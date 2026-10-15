@@ -10,6 +10,12 @@
       "header.planner": "Planner",
       "header.plannerTitle": "Open meal planner",
       "header.settings": "Settings",
+      "header.home": "Storecipe home",
+      "settings.signedIn": "Signed in",
+      "settings.theme": "Theme",
+      "theme.option.light": "Light",
+      "theme.option.dark": "Dark",
+      "theme.option.sunset": "Sunset",
 
       // Auth panel
       "auth.title": "Account",
@@ -34,10 +40,6 @@
 
       // Language / theme
       "language.label": "Language",
-      "theme.light": "Theme: Light",
-      "theme.dark": "Theme: Dark",
-      "theme.sunset": "Theme: Sunset",
-      "theme.sunsetInfoAria": "About sunset theme",
       "theme.sunsetInfoBody": "Dark theme turns on from {start} to {end} (your local time).",
 
       // Search
@@ -400,6 +402,12 @@
       "header.planner": "Планировщик",
       "header.plannerTitle": "Открыть планировщик питания",
       "header.settings": "Настройки",
+      "header.home": "Storecipe — на главную",
+      "settings.signedIn": "Вы вошли",
+      "settings.theme": "Тема",
+      "theme.option.light": "Светлая",
+      "theme.option.dark": "Тёмная",
+      "theme.option.sunset": "Закат",
 
       "auth.title": "Аккаунт",
       "auth.close": "Закрыть настройки",
@@ -422,10 +430,6 @@
       "auth.signOutFailedShort": "Ошибка выхода: {error}",
 
       "language.label": "Язык",
-      "theme.light": "Тема: Светлая",
-      "theme.dark": "Тема: Тёмная",
-      "theme.sunset": "Тема: Закат",
-      "theme.sunsetInfoAria": "О теме «Закат»",
       "theme.sunsetInfoBody": "Тёмная тема включается с {start} до {end} (по вашему местному времени).",
 
       "search.title": "Поиск рецептов",

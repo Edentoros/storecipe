@@ -1,6 +1,6 @@
 (() => {
   function createThemeManager({ dom, state, config, helpers, supabaseServices, setAppStatus, i18n }) {
-    const { themeToggleButton, sunsetInfoButton, sunsetInfoText } = dom;
+    const { themeOptions, sunsetInfoText } = dom;
     const { DEFAULT_THEME, THEME_LOCAL_KEY_PREFIX, THEME_PREFERENCES_TABLE } = config;
     const { normalizeTheme } = helpers;
     const { hasSupabaseConfig, fetchThemePreferenceViaRest, upsertThemePreferenceViaRest } = supabaseServices;
@@ -23,51 +23,26 @@
       return `${String(h).padStart(2, "0")}:00`;
     }
 
-    function getThemeLabel(theme) {
-      if (theme === "dark") return t("theme.dark");
-      if (theme === "sunset") return t("theme.sunset");
-      return t("theme.light");
-    }
-
+    // Sunset follows the clock, so say when it goes dark.
     function updateSunsetInfo() {
+      if (!sunsetInfoText) return;
       const isSunset = state.currentTheme === "sunset";
-      if (sunsetInfoButton) {
-        sunsetInfoButton.classList.toggle("hidden", !isSunset);
-        if (!isSunset) {
-          sunsetInfoButton.setAttribute("aria-expanded", "false");
-        }
-      }
-      if (sunsetInfoText) {
-        sunsetInfoText.textContent = t("theme.sunsetInfoBody", {
-          start: formatHour(SUNSET_START_HOUR),
-          end: formatHour(SUNSET_END_HOUR)
-        });
-        if (!isSunset) {
-          sunsetInfoText.classList.add("hidden");
-        }
-      }
+      sunsetInfoText.textContent = t("theme.sunsetInfoBody", {
+        start: formatHour(SUNSET_START_HOUR),
+        end: formatHour(SUNSET_END_HOUR)
+      });
+      sunsetInfoText.classList.toggle("hidden", !isSunset);
     }
 
     function updateThemeToggleUi() {
-      if (!themeToggleButton) return;
-      themeToggleButton.textContent = getThemeLabel(state.currentTheme);
-      const isPressed = state.currentTheme === "dark" || (state.currentTheme === "sunset" && isSunsetDark());
-      themeToggleButton.setAttribute("aria-pressed", isPressed ? "true" : "false");
+      if (themeOptions) {
+        themeOptions.querySelectorAll("[data-theme]").forEach((option) => {
+          const isSelected = option.dataset.theme === state.currentTheme;
+          option.setAttribute("aria-checked", isSelected ? "true" : "false");
+          option.tabIndex = isSelected ? 0 : -1;
+        });
+      }
       updateSunsetInfo();
-    }
-
-    function toggleSunsetInfo() {
-      if (!sunsetInfoText || !sunsetInfoButton) return;
-      const willOpen = sunsetInfoText.classList.contains("hidden");
-      sunsetInfoText.classList.toggle("hidden", !willOpen);
-      sunsetInfoButton.setAttribute("aria-expanded", willOpen ? "true" : "false");
-    }
-
-    if (sunsetInfoButton) {
-      sunsetInfoButton.addEventListener("click", (event) => {
-        event.stopPropagation();
-        toggleSunsetInfo();
-      });
     }
 
     const ANONYMOUS_THEME_KEY = `${THEME_LOCAL_KEY_PREFIX}anonymous`;
