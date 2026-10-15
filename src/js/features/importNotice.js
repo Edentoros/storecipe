@@ -18,7 +18,7 @@
     quota_exceeded: "warning"
   };
   const RETRYABLE = new Set(["fetch_failed", "ai_failed", "service_unreachable", "server_error"]);
-  const NO_NEW_LINK = new Set(["quota_exceeded", "unauthenticated", "ai_unavailable", "quota_unavailable", "not_deployed"]);
+  const NO_NEW_LINK = new Set(["quota_exceeded", "unauthenticated", "ai_unavailable", "quota_unavailable", "not_deployed", "busy"]);
   // Several server codes mean the same thing to the user.
   const CODE_ALIASES = { quota_unavailable: "ai_unavailable", not_deployed: "ai_unavailable", invalid_request: "server_error" };
 

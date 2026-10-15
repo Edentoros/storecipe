@@ -26,6 +26,7 @@ function getDomRefs() {
     draftNotice: document.getElementById("draftNotice"),
     discardDraft: document.getElementById("discardDraft"),
     downloadBackup: document.getElementById("downloadBackup"),
+    captchaBox: document.getElementById("captchaBox"),
     signOutButton: document.getElementById("signOutButton"),
     authConfirmPassword: document.getElementById("authConfirmPassword"),
     authConfirmPasswordLabel: authForm?.querySelector('label[for="authConfirmPassword"]'),

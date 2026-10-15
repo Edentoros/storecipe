@@ -37,6 +37,10 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
 // Successful imports (plus pages the AI rejected as not-a-recipe) per user.
 const FREE_IMPORT_LIMIT = Math.max(0, Number(Deno.env.get("FREE_IMPORT_LIMIT") ?? 5) || 0);
 // Comma-separated auth user ids that are never limited (the app owner).
+// Site-wide ceiling on imports per 24 hours, across all accounts (new accounts
+// each get FREE_IMPORT_LIMIT, so this caps what mass sign-ups could cost).
+// Unlimited users aren't affected. 0 turns it off. Needs sql/abuse-protection.sql.
+const SITE_DAILY_IMPORT_LIMIT = Math.max(0, Number(Deno.env.get("SITE_DAILY_IMPORT_LIMIT") ?? 100) || 0);
 const UNLIMITED_USER_IDS = new Set(
   (Deno.env.get("IMPORT_UNLIMITED_USER_IDS") || "").split(",").map((id) => id.trim()).filter(Boolean)
 );
@@ -111,6 +115,29 @@ async function countUsedImports(caller: Caller): Promise<number> {
     );
   }
   return total;
+}
+
+async function assertUnderSiteDailyLimit(caller: Caller) {
+  if (!SITE_DAILY_IMPORT_LIMIT) return;
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/recipe_imports_last_24h`, {
+      method: "POST",
+      headers: { apikey: caller.apiKey, Authorization: caller.authHeader, "Content-Type": "application/json" },
+      body: "{}"
+    });
+    const total = response.ok ? Number(await response.json()) : NaN;
+    if (!Number.isFinite(total)) {
+      // Not set up yet: carry on (the OpenAI budget is the backstop), but log it.
+      console.error("recipe-import: site-wide daily limit unavailable", response.status);
+      return;
+    }
+    if (total >= SITE_DAILY_IMPORT_LIMIT) {
+      throw new ImportError("busy", 429, "Importing is paused for today because of unusually heavy use.");
+    }
+  } catch (error) {
+    if (error instanceof ImportError) throw error;
+    console.error("recipe-import: site-wide daily limit check failed", error);
+  }
 }
 
 async function recordImport(caller: Caller, sourceUrl: string, source: "json-ld" | "ai", status: "ok" | "rejected") {
@@ -316,6 +343,8 @@ Deno.serve(async (request) => {
         { remaining: 0 }
       );
     }
+
+    if (!unlimited) await assertUnderSiteDailyLimit(caller);
 
     const requestedUrl = parseHttpUrl(body?.url);
     if (!requestedUrl) throw new ImportError("invalid_url", 400, "Paste a full web address starting with http:// or https://.");

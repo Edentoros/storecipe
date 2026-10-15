@@ -14,7 +14,8 @@ if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_PUBLISHABLE_KEY" ]; then
   cat > site/src/js/core/config.js <<EOF
 window.StorecipeConfig = {
   SUPABASE_URL: "${SUPABASE_URL}",
-  SUPABASE_PUBLISHABLE_KEY: "${SUPABASE_PUBLISHABLE_KEY}"
+  SUPABASE_PUBLISHABLE_KEY: "${SUPABASE_PUBLISHABLE_KEY}",
+  TURNSTILE_SITE_KEY: "${TURNSTILE_SITE_KEY:-}"
 };
 EOF
   echo "config.js generated successfully."

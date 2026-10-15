@@ -29,14 +29,19 @@ Storecipe add-recipe form. The user always reviews the result before saving.
 7. **Fallback.** If the AI is unavailable and the site has structured data, that
    data is returned untidied (`tidied: false`) rather than failing.
 
+8. **Site-wide daily cap.** At most `SITE_DAILY_IMPORT_LIMIT` imports (default
+   100) per 24 hours across all accounts, so mass sign-ups can't run up the AI
+   bill. Unlimited users are exempt. Inactive until `sql/abuse-protection.sql`
+   has been run.
+
 What uses up a free import: a successful import, or a page the AI was asked
 about and rejected as not-a-recipe. Sites that block us, bad links and our own
 errors don't count.
 
 ### Setup
 
-1. Run `sql/recipe-imports-migration.sql` and `sql/recipe-source-url-migration.sql`
-   in the Supabase SQL editor.
+1. Run `sql/recipe-imports-migration.sql`, `sql/recipe-source-url-migration.sql`
+   and `sql/abuse-protection.sql` in the Supabase SQL editor.
 2. Set secrets:
 
 ```bash
@@ -46,6 +51,8 @@ supabase secrets set IMPORT_UNLIMITED_USER_IDS=<your-user-id>
 # Optional: default is gpt-4.1-nano (cheapest); gpt-4.1-mini rewrites/translates better
 supabase secrets set OPENAI_MODEL=gpt-4.1-mini
 supabase secrets set FREE_IMPORT_LIMIT=5
+# Optional: imports per 24h across everyone (default 100, 0 = no cap)
+supabase secrets set SITE_DAILY_IMPORT_LIMIT=100
 ```
 
 `SUPABASE_URL` and `SUPABASE_ANON_KEY` are provided to edge functions
@@ -71,4 +78,15 @@ Quota check: `POST { "action": "quota" }` → `{ unlimited, limit, remaining }`.
 Errors: `{ error, code }` where `code` is one of `unauthenticated`,
 `quota_exceeded`, `invalid_url`, `url_blocked`, `fetch_failed`, `not_html`,
 `no_readable_text`, `not_recipe`, `ai_unavailable`, `ai_failed`,
-`quota_unavailable`, `invalid_request`, `server_error`.
+`quota_unavailable`, `busy` (site-wide daily cap reached), `invalid_request`,
+`server_error`.
+
+### image-proxy
+
+`supabase/functions/image-proxy` downloads a recipe photo from another site for
+the app to store. It shares this folder's URL-safety checks (`lib.ts`): signed-in
+users only, public addresses only (every redirect re-checked), images only, at
+most 10 MB and 10 s, and at most `PHOTO_FETCHES_PER_HOUR` (default 30) per person
+(needs `sql/abuse-protection.sql`). For the dashboard editor, paste a single-file
+build: `lib.ts` with `export ` removed, followed by its `index.ts` without the
+`../recipe-import/lib.ts` import.

@@ -245,7 +245,7 @@
           setAppStatus(t("friends.alreadyFriends", { name: getFriendDisplayName(target) }));
           return;
         }
-        await addFriendshipViaRest(state.currentUser.id, target.id);
+        await addFriendshipViaRest(state.currentUser.id, target.id, raw);
         await loadFriends({ refreshUi: true });
         setAppStatus(t("friends.added", { name: getFriendDisplayName(target) }));
         if (addFriendInput) addFriendInput.value = "";

@@ -3903,6 +3903,13 @@ body.theme-dark .cook-mode__switch {
   }
 }
 
+/* ── CAPTCHA on the sign-in form ────────────────────────────────────────── */
+.captcha-box:not(.hidden) {
+  display: block;
+  margin: 1rem 0 0.25rem;
+  min-height: 65px;
+}
+
 /* ── Gentle transitions between screens ─────────────────────────────────── */
 @keyframes view-in {
   from {

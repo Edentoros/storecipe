@@ -93,6 +93,7 @@
     draftNotice,
     discardDraft,
     downloadBackup,
+    captchaBox,
     signOutButton,
     authConfirmPassword,
     authConfirmPasswordLabel,
@@ -1551,13 +1552,15 @@
   }
 
   async function resendConfirmation(email) {
+    const captcha = takeCaptchaToken();
+    if (captcha === null) return;
     setAuthLoading(true, t("auth.resending"));
     try {
       const siteUrl = window.location.origin;
       const { error } = await client.auth.resend({
         type: "signup",
         email,
-        options: { emailRedirectTo: `${siteUrl}/confirm.html` }
+        options: { emailRedirectTo: `${siteUrl}/confirm.html`, captchaToken: captcha }
       });
       if (error) {
         setAppStatus(t("status.couldNotResend", { error: error.message }));
@@ -1589,10 +1592,84 @@
     });
   }
 
+  // CAPTCHA (Cloudflare Turnstile) on sign-in, sign-up and resending the
+  // confirmation email, so scripts can't mass-create accounts. Active only when
+  // TURNSTILE_SITE_KEY is set in config.js (from the Netlify environment) and
+  // must be switched on in Supabase (Authentication → Attack Protection) at the
+  // same time: Supabase then rejects auth requests without a token.
+  const TURNSTILE_SITE_KEY = String(window.StorecipeConfig?.TURNSTILE_SITE_KEY || "").trim();
+  let captchaWidgetId = null;
+  let captchaToken = "";
+  let turnstileLoading = null;
+
+  function loadTurnstile() {
+    if (window.turnstile) return Promise.resolve(window.turnstile);
+    if (!turnstileLoading) {
+      turnstileLoading = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+        script.async = true;
+        script.onload = () => (window.turnstile ? resolve(window.turnstile) : reject(new Error("Turnstile missing")));
+        script.onerror = () => {
+          turnstileLoading = null;
+          reject(new Error("Turnstile failed to load"));
+        };
+        document.head.appendChild(script);
+      });
+    }
+    return turnstileLoading;
+  }
+
+  async function ensureCaptcha() {
+    if (!TURNSTILE_SITE_KEY || !captchaBox || captchaWidgetId !== null) return;
+    try {
+      const turnstile = await loadTurnstile();
+      if (captchaWidgetId !== null) return;
+      captchaBox.classList.remove("hidden");
+      captchaWidgetId = turnstile.render(captchaBox, {
+        sitekey: TURNSTILE_SITE_KEY,
+        theme: document.body.classList.contains("theme-dark") ? "dark" : "light",
+        language: state.currentLanguage || "auto",
+        callback: (token) => {
+          captchaToken = token;
+        },
+        "expired-callback": () => {
+          captchaToken = "";
+        },
+        "error-callback": () => {
+          captchaToken = "";
+        }
+      });
+    } catch (_error) {
+      setAuthStatus(t("auth.captchaUnavailable"), { isError: true });
+    }
+  }
+
+  // A token works once: hand it over and get the widget ready for the next try.
+  // Returns null when the check is needed but not done yet.
+  function takeCaptchaToken() {
+    if (!TURNSTILE_SITE_KEY) return undefined;
+    const token = captchaToken;
+    if (!token) {
+      void ensureCaptcha();
+      setAuthStatus(t("auth.captchaNeeded"), { isError: true });
+      return null;
+    }
+    captchaToken = "";
+    if (captchaWidgetId !== null) window.turnstile?.reset(captchaWidgetId);
+    return token;
+  }
+
+  if (TURNSTILE_SITE_KEY && authForm) {
+    authForm.addEventListener("focusin", () => void ensureCaptcha());
+  }
+
   async function signIn(email, password) {
+    const captcha = takeCaptchaToken();
+    if (captcha === null) return;
     setAuthLoading(true, t("auth.signingIn"));
     try {
-      const { error } = await client.auth.signInWithPassword({ email, password });
+      const { error } = await client.auth.signInWithPassword({ email, password, options: { captchaToken: captcha } });
       if (error) {
         if (isEmailNotConfirmedError(error)) {
           showEmailNotConfirmedUi(email);
@@ -1674,13 +1751,15 @@
   }
 
   async function signUp(email, password) {
+    const captcha = takeCaptchaToken();
+    if (captcha === null) return;
     setAuthLoading(true, t("auth.signingUp"));
     try {
       const siteUrl = window.location.origin;
       const { error } = await client.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${siteUrl}/confirm.html` }
+        options: { emailRedirectTo: `${siteUrl}/confirm.html`, captchaToken: captcha }
       });
       if (error) {
         setAuthStatus(t("auth.signUpFailedShort", { error: error.message }), { isError: true });
@@ -3130,6 +3209,7 @@
     }
 
     if (!state.currentUser) {
+      void ensureCaptcha();
       if (justSignedOut || switchedUser || authEvent === "SIGNED_OUT") {
         if (previousUserId) {
           try { window.localStorage.removeItem(OFFLINE_RECIPES_PREFIX + previousUserId); } catch (_error) { /* ignore */ }

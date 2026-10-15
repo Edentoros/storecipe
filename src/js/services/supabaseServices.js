@@ -200,25 +200,29 @@ function createSupabaseServices({ config, state, helpers }) {
     return Array.isArray(data) ? data[0] || null : null;
   }
 
-  async function lookupProfileByEmailViaRest(email) {
+  // Finding someone needs their exact email or invite code; the database
+  // function returns that one person (or nobody) and can't list everyone.
+  async function findProfileViaRpc(lookup) {
     const accessToken = getAccessToken();
-    // Case-insensitive exact match: ilike with no wildcards = exact icase match.
-    const safe = String(email || "").trim().replace(/[%_]/g, "");
-    const query = new URLSearchParams({
-      select: "id,email,invite_code,display_name",
-      email: `ilike.${safe}`,
-      limit: "1"
+    const response = await debugFetch(`${SUPABASE_URL}/rest/v1/rpc/find_profile`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ lookup: String(lookup || "").trim() })
     });
-    const response = await debugFetch(
-      `${SUPABASE_URL}/rest/v1/${getProfilesTable()}?${query.toString()}`,
-      { method: "GET", headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${accessToken}` } }
-    );
     const data = await parseResponse(response, []);
     if (!response.ok) {
       const message = typeof data === "object" && data && "message" in data ? data.message : `Profile lookup failed ${response.status}`;
       throw new Error(message);
     }
     return Array.isArray(data) ? data[0] || null : null;
+  }
+
+  async function lookupProfileByEmailViaRest(email) {
+    return findProfileViaRpc(email);
   }
 
   async function fetchProfilesByIdsViaRest(ids) {
@@ -242,22 +246,7 @@ function createSupabaseServices({ config, state, helpers }) {
   }
 
   async function lookupProfileByInviteCodeViaRest(code) {
-    const accessToken = getAccessToken();
-    const query = new URLSearchParams({
-      select: "id,email,invite_code,display_name",
-      invite_code: `eq.${String(code || "").trim().toUpperCase()}`,
-      limit: "1"
-    });
-    const response = await debugFetch(
-      `${SUPABASE_URL}/rest/v1/${getProfilesTable()}?${query.toString()}`,
-      { method: "GET", headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${accessToken}` } }
-    );
-    const data = await parseResponse(response, []);
-    if (!response.ok) {
-      const message = typeof data === "object" && data && "message" in data ? data.message : `Profile lookup failed ${response.status}`;
-      throw new Error(message);
-    }
-    return Array.isArray(data) ? data[0] || null : null;
+    return findProfileViaRpc(String(code || "").trim().toUpperCase());
   }
 
   async function fetchFriendshipsViaRest(userId) {
@@ -293,21 +282,19 @@ function createSupabaseServices({ config, state, helpers }) {
     return rows.map((r) => ({ ...r, profile: profileById.get(r.followee_id) || null }));
   }
 
-  async function addFriendshipViaRest(followerId, followeeId) {
+  // Following goes through the database function, which checks the email or
+  // invite code again (following someone by id alone isn't allowed).
+  async function addFriendshipViaRest(_followerId, _followeeId, lookup) {
     const accessToken = getAccessToken();
-    const response = await debugFetch(
-      `${SUPABASE_URL}/rest/v1/${getFriendshipsTable()}?on_conflict=follower_id,followee_id`,
-      {
-        method: "POST",
-        headers: {
-          apikey: SUPABASE_PUBLISHABLE_KEY,
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Prefer: "resolution=merge-duplicates,return=representation"
-        },
-        body: JSON.stringify([{ follower_id: followerId, followee_id: followeeId }])
-      }
-    );
+    const response = await debugFetch(`${SUPABASE_URL}/rest/v1/rpc/follow_profile`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ lookup: String(lookup || "").trim() })
+    });
     const data = await parseResponse(response, []);
     if (!response.ok) {
       const message = typeof data === "object" && data && "message" in data ? data.message : `Add friend failed ${response.status}`;

@@ -7,7 +7,7 @@
     "build:css": "sass scss/style.scss dist/style.css",
     "watch:css": "sass --watch scss/style.scss:dist/style.css",
     "css": "sass scss/style.scss dist/style.css --watch",
-    "test": "node --test \"tests/*.test.js\""
+    "test": "node --test \"tests/*.test.js\" \"tests/*.test.mjs\""
   },
   "devDependencies": {
     "sass": "^1.99.0"
