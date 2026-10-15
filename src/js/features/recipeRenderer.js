@@ -371,7 +371,7 @@ function createRecipeRenderer({
         ${imageHtml}
         <div class="recipe-detail-card__header">
           <div class="recipe-detail-card__title-row">
-            <h2>${escapeHtml(recipe.title)}</h2>
+            <h2 tabindex="-1">${escapeHtml(recipe.title)}</h2>
             ${isOwner ? `<button class="${favClass}" type="button" data-action="toggle-fav" data-id="${recipe.id}" aria-label="${escapeHtml(favLabel)}">${favHeart}</button>` : ""}
           </div>
           <p class="recipe-detail-card__date">${escapeHtml(dateLine)} ${categoryHtml}${sourceHtml}</p>
@@ -382,6 +382,14 @@ function createRecipeRenderer({
             : (isOwner ? `<button class="button button--ghost recipe-detail-card__add-description" type="button" data-action="inline-edit-field" data-field="description" data-id="${recipe.id}">${escapeHtml(t("detail.addDescription"))}</button>` : "")}
         </div>
         ${metaHtml}
+
+        ${"wakeLock" in navigator
+          ? `<label class="cook-mode">
+              <input type="checkbox" class="cook-mode__input" data-action="toggle-keep-screen-on"${state.keepScreenOn ? " checked" : ""} />
+              <span class="cook-mode__switch" aria-hidden="true"></span>
+              <span class="cook-mode__text">${escapeHtml(t("detail.keepScreenOn"))}</span>
+            </label>`
+          : ""}
 
         <div class="recipe-detail-card__columns">
         <section class="recipe-detail-card__section" data-field="ingredients">

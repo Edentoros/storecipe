@@ -847,6 +847,12 @@
       },
       get currentUser() {
         return state.currentUser;
+      },
+      get isFriendsFeedActive() {
+        return state.isFriendsFeedActive;
+      },
+      get keepScreenOn() {
+        return state.keepScreenOn;
       }
     },
     hasSupabaseConfig,
@@ -896,8 +902,13 @@
   }
   function showDetail(recipe, options = {}) {
     const isOpeningFromList = listPanel && !listPanel.classList.contains("hidden");
-    if (isOpeningFromList) state.listScrollY = window.scrollY;
+    if (isOpeningFromList) {
+      state.listScrollY = window.scrollY;
+      state.lastOpenedRecipeId = recipe?.id || null;
+    }
     rawShowDetail(recipe, { ...options, scrollToDetail: false });
+    // Keyboard and screen-reader users land on the recipe, not back at the top.
+    if (isOpeningFromList) detailContent.querySelector("h2")?.focus({ preventScroll: true });
     // A recipe opens at the top of the page with the header in view, without an
     // animated scroll. Re-renders (inline edits, photo loading) keep the position.
     if (options.scrollToDetail !== false) window.scrollTo({ top: 0, behavior: "instant" });
@@ -908,6 +919,91 @@
   function returnToList() {
     setDetailOpen(false);
     window.scrollTo({ top: state.listScrollY || 0, behavior: "instant" });
+    // ...and back on the card they opened.
+    const id = state.lastOpenedRecipeId;
+    if (id) recipeList.querySelector(`.recipe-card[data-id="${CSS.escape(String(id))}"]`)?.focus({ preventScroll: true });
+  }
+
+  // Escape closes an open recipe, unless something on top of it handled the key
+  // first (an edit in progress, settings, the full-size photo).
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || event.defaultPrevented) return;
+    if (recipeDetail.classList.contains("hidden") || state.isSettingsOpen) return;
+    if (detailContent.querySelector(".recipe-inline-editor") || document.querySelector(".image-fullview-overlay")) return;
+    returnToList();
+    clearRecipeUrl();
+  });
+
+  // "Keep screen on" while a recipe is open, so the phone doesn't lock mid-cook.
+  // Browsers drop the lock whenever the page is hidden, so it's taken again on return.
+  const KEEP_SCREEN_ON_KEY = "storecipe_keep_screen_on";
+  try {
+    state.keepScreenOn = window.localStorage.getItem(KEEP_SCREEN_ON_KEY) === "1";
+  } catch (_error) {
+    state.keepScreenOn = false;
+  }
+  let screenWakeLock = null;
+  async function updateScreenWakeLock() {
+    if (!("wakeLock" in navigator)) return;
+    const wanted = state.keepScreenOn && !recipeDetail.classList.contains("hidden") && document.visibilityState === "visible";
+    if (wanted && !screenWakeLock) {
+      try {
+        screenWakeLock = await navigator.wakeLock.request("screen");
+        screenWakeLock.addEventListener("release", () => {
+          screenWakeLock = null;
+        });
+      } catch (_error) {
+        screenWakeLock = null; // e.g. battery saver, or the browser refused
+        return false;
+      }
+    } else if (!wanted && screenWakeLock) {
+      const lock = screenWakeLock;
+      screenWakeLock = null;
+      lock.release().catch(() => {});
+    }
+    return true;
+  }
+  new MutationObserver(() => void updateScreenWakeLock()).observe(recipeDetail, { attributes: true, attributeFilter: ["class"] });
+  document.addEventListener("visibilitychange", () => void updateScreenWakeLock());
+  detailContent.addEventListener("change", (event) => {
+    const toggle = event.target.closest?.("[data-action='toggle-keep-screen-on']");
+    if (!toggle) return;
+    state.keepScreenOn = toggle.checked;
+    try {
+      window.localStorage.setItem(KEEP_SCREEN_ON_KEY, state.keepScreenOn ? "1" : "0");
+    } catch (_error) {
+      /* the choice still applies until the page is closed */
+    }
+    void updateScreenWakeLock().then((ok) => {
+      if (state.keepScreenOn && ok === false) showToast(t("detail.keepScreenOnFailed"), "info", 5000);
+    });
+  });
+
+  // The browser's address bar follows the light or dark theme.
+  const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+  if (themeColorMeta) {
+    const syncThemeColor = () =>
+      themeColorMeta.setAttribute("content", document.body.classList.contains("theme-dark") ? "#0b1622" : "#f8f5ee");
+    syncThemeColor();
+    new MutationObserver(syncThemeColor).observe(document.body, { attributes: true, attributeFilter: ["class"] });
+  }
+
+  // Installable app + offline use (see sw.js).
+  if ("serviceWorker" in navigator && window.location.protocol !== "file:") {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("./sw.js")
+        .then(() => navigator.serviceWorker.ready)
+        .then((registration) => {
+          // Files loaded before the worker took over, so they're kept for offline too.
+          const urls = performance.getEntriesByType("resource").map((entry) => entry.name);
+          urls.push(window.location.origin + window.location.pathname);
+          registration.active?.postMessage({ type: "cache-urls", urls });
+        })
+        .catch(() => {
+          /* the app works the same without it, just not offline */
+        });
+    });
   }
 
   // The logo goes home: the recipe list, from wherever you are.
@@ -964,6 +1060,39 @@
     });
   }
 
+  const OFFLINE_RECIPES_PREFIX = "storecipe_offline_recipes_";
+
+  function saveOfflineRecipes(userId, recipes) {
+    if (!userId) return;
+    try {
+      const plain = recipes.map((recipe) => {
+        const copy = { ...recipe };
+        Object.keys(copy).forEach((key) => {
+          if (key.startsWith("_")) delete copy[key];
+        });
+        return copy;
+      });
+      window.localStorage.setItem(OFFLINE_RECIPES_PREFIX + userId, JSON.stringify(plain));
+    } catch (_error) {
+      /* storage full or unavailable: offline copy is a nice-to-have */
+    }
+  }
+
+  function loadOfflineRecipes(userId) {
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(OFFLINE_RECIPES_PREFIX + userId) || "null");
+      return Array.isArray(parsed) ? parsed : null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function isConnectionError(error) {
+    if (!navigator.onLine) return true;
+    const text = `${error?.name || ""} ${error?.message || ""}`.toLowerCase();
+    return /typeerror|aborterror|failed to fetch|networkerror|load failed|timed out|timeout/.test(text);
+  }
+
   async function loadRecipes() {
     beginRecipeListLoad();
     try {
@@ -978,6 +1107,16 @@
         data = await fetchRecipesViaRest(state.currentUser.id);
       } catch (error) {
         logSupabaseError("load recipes", error);
+        const offlineCopy = isConnectionError(error) ? loadOfflineRecipes(state.currentUser.id) : null;
+        if (offlineCopy) {
+          state.recipes = recipeRenderer
+            .normalizeLoadedRecipes(offlineCopy, DEFAULT_DIFFICULTY)
+            .filter((item) => !pendingDeletes.has(item.id));
+          rerenderList();
+          void hydrateImagesInBackground(state.recipes);
+          showToast(t("status.offlineRecipes"), "info", 6000);
+          return;
+        }
         if (isMissingUserIdColumn(error)) {
           setAppStatus(t("status.dbMissingUserId"));
         } else {
@@ -990,6 +1129,7 @@
         .normalizeLoadedRecipes(data, DEFAULT_DIFFICULTY)
         .filter((item) => !pendingDeletes.has(item.id));
       rerenderList();
+      saveOfflineRecipes(state.currentUser.id, state.recipes);
 
       // An empty account gets the welcome card in the list, not a pop-up.
       void hydrateImagesInBackground(state.recipes);
@@ -2987,6 +3127,10 @@
 
     if (!state.currentUser) {
       if (justSignedOut || switchedUser || authEvent === "SIGNED_OUT") {
+        if (previousUserId) {
+          try { window.localStorage.removeItem(OFFLINE_RECIPES_PREFIX + previousUserId); } catch (_error) { /* ignore */ }
+        }
+        if ("caches" in window) void caches.delete("storecipe-photos-v1").catch(() => {});
         state.isSettingsOpen = false;
         resetRecipeFormState();
         setTheme(DEFAULT_THEME, { persistForCurrentUser: false });
