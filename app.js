@@ -89,6 +89,9 @@
     signedInEmail,
     settingsAvatar,
     homeLink,
+    draftNotice,
+    discardDraft,
+    downloadBackup,
     signOutButton,
     authConfirmPassword,
     authConfirmPasswordLabel,
@@ -230,6 +233,7 @@
   const getSignedOutPrompt = () => t("auth.signInPrompt");
   const SIGNED_OUT_PROMPT = getSignedOutPrompt();
   const DRAFT_LOCAL_KEY = "storecipe_recipe_draft";
+  const EDIT_DRAFT_LOCAL_KEY = "storecipe_recipe_edit_draft";
   const supabaseServices = createSupabaseServices({
     config: {
       SUPABASE_URL,
@@ -600,21 +604,35 @@
     saveDraft();
   }
 
-  function resetRecipeFormState() {
+  // keepDraft: empty the form but leave the saved draft for next time (closing
+  // the form). Without it the draft goes too (after saving, or discarding).
+  function resetRecipeFormState({ keepDraft = false } = {}) {
+    if (keepDraft && !state.editingRecipeId) {
+      // Only a form that's on screen holds the draft; a hidden one is empty.
+      if (!addRecipeSection.classList.contains("hidden")) saveDraft({ formOpen: false });
+    } else if (state.editingRecipeId) {
+      clearDraft(EDIT_DRAFT_LOCAL_KEY);
+    } else {
+      clearDraft(DRAFT_LOCAL_KEY);
+    }
     recipeForm.reset();
     state.pendingImportSourceUrl = "";
     syncDifficultyUi();
     recipeMetaManager.resetValidationUi();
     setRecipeFormMode(null);
     hideEditImageTools();
-    clearDraft();
     importNotice?.clear();
+    if (draftNotice) draftNotice.classList.add("hidden");
   }
 
-  function saveDraft() {
-    if (addRecipeSection.classList.contains("hidden")) return;
+  // Saved from the first character typed. formOpen remembers whether the form
+  // was on screen, so a page refresh reopens it but a deliberate close doesn't.
+  function saveDraft({ formOpen = true } = {}) {
+    if (formOpen && addRecipeSection.classList.contains("hidden")) return;
+    const key = state.editingRecipeId ? EDIT_DRAFT_LOCAL_KEY : DRAFT_LOCAL_KEY;
     try {
       const draft = {
+        formOpen,
         editingRecipeId: state.editingRecipeId || null,
         title: recipeForm.elements.title?.value || "",
         description: recipeForm.elements.description?.value || "",
@@ -631,25 +649,35 @@
         imageUrl: imageUrlInput?.value || "",
         savedAt: Date.now()
       };
-      window.localStorage.setItem(DRAFT_LOCAL_KEY, JSON.stringify(draft));
+      if (!draftHasContent(draft)) {
+        window.localStorage.removeItem(key);
+        return;
+      }
+      window.localStorage.setItem(key, JSON.stringify(draft));
     } catch (_) { /* localStorage full or unavailable */ }
+  }
+
+  // Difficulty always has a value, so it doesn't count as something typed.
+  function draftHasContent(draft) {
+    return ["title", "description", "ingredients", "method", "notes", "serves", "imageUrl", "prepHours", "prepMinutes", "cookHours", "cookMinutes", "category"]
+      .some((field) => String(draft?.[field] ?? "").trim() !== "");
   }
 
   const saveDraftDebounced = debounce(saveDraft, 500);
 
-  function clearDraft() {
-    try { window.localStorage.removeItem(DRAFT_LOCAL_KEY); } catch (_) {}
+  function clearDraft(key = DRAFT_LOCAL_KEY) {
+    try { window.localStorage.removeItem(key); } catch (_) {}
   }
 
-  function loadDraft() {
+  function loadDraft(key = DRAFT_LOCAL_KEY) {
     try {
-      const raw = window.localStorage.getItem(DRAFT_LOCAL_KEY);
+      const raw = window.localStorage.getItem(key);
       if (!raw) return null;
       const draft = JSON.parse(raw);
-      if (!draft || typeof draft !== "object") return null;
-      const maxAge = 7 * 24 * 60 * 60 * 1000;
+      if (!draft || typeof draft !== "object" || !draftHasContent(draft)) return null;
+      const maxAge = 30 * 24 * 60 * 60 * 1000;
       if (draft.savedAt && Date.now() - draft.savedAt > maxAge) {
-        clearDraft();
+        clearDraft(key);
         return null;
       }
       return draft;
@@ -663,7 +691,7 @@
     if (draft.editingRecipeId) {
       const recipe = state.recipes.find((r) => r.id === draft.editingRecipeId);
       if (!recipe) {
-        clearDraft();
+        clearDraft(EDIT_DRAFT_LOCAL_KEY);
         return false;
       }
       startEditRecipe(recipe);
@@ -689,7 +717,11 @@
     getRecipeMetaFromFormData(new FormData(recipeForm), { showStatus: false });
     showManualRecipeFields();
     setAddRecipeOpen(true);
-    setAppStatus(t("status.draftRestored"));
+    // A new-recipe draft says it's back and can be thrown away. The link box
+    // stays hidden meanwhile, so an import can't overwrite the draft.
+    if (draftNotice) draftNotice.classList.toggle("hidden", Boolean(draft.editingRecipeId));
+    if (!draft.editingRecipeId && recipeImportTools) recipeImportTools.classList.add("hidden");
+    saveDraft();
     return true;
   }
 
@@ -880,7 +912,7 @@
   function goHome() {
     if (state.isSettingsOpen) setSettingsOpen(false, { returnFocus: false });
     if (state.currentUser) {
-      if (!addRecipeSection.classList.contains("hidden")) resetRecipeFormState();
+      if (!addRecipeSection.classList.contains("hidden")) resetRecipeFormState({ keepDraft: true });
       showListView();
       clearRecipeUrl();
     }
@@ -952,7 +984,9 @@
         return;
       }
 
-      state.recipes = recipeRenderer.normalizeLoadedRecipes(data, DEFAULT_DIFFICULTY);
+      state.recipes = recipeRenderer
+        .normalizeLoadedRecipes(data, DEFAULT_DIFFICULTY)
+        .filter((item) => !pendingDeletes.has(item.id));
       rerenderList();
 
       // An empty account gets the welcome card in the list, not a pop-up.
@@ -1295,43 +1329,79 @@
     }
   }
 
+  const UNDO_DELETE_MS = 8000;
+  const pendingDeletes = new Map();
+
   async function deleteRecipe(id) {
-    const confirmed = window.confirm(t("status.confirmDelete"));
-    if (!confirmed) return;
-
-    if (!hasSupabaseConfig) {
-      state.recipes = state.recipes.filter((item) => item.id !== id);
-      saveLocalRecipes(state.recipes);
-      recipeDetail.classList.add("hidden");
-      detailContent.innerHTML = "";
-      rerenderList();
-      return;
-    }
-
-    if (!state.currentUser) {
+    if (hasSupabaseConfig && !state.currentUser) {
       setAppStatus(t("status.signInToDelete"));
       return;
     }
+    const index = state.recipes.findIndex((item) => item.id === id);
+    if (index === -1) return;
+    const recipe = state.recipes[index];
 
-    const recipe = state.recipes.find((item) => item.id === id);
-    if (recipe) {
-      const imagePathToDelete = normalizeStoragePath(recipe.image_url);
-      if (imagePathToDelete) {
-        await client.storage.from(BUCKET).remove([imagePathToDelete]);
-      }
+    state.recipes = state.recipes.filter((item) => item.id !== id);
+    const timerId = window.setTimeout(() => void commitDelete(id), UNDO_DELETE_MS);
+    const pending = { recipe, index, timerId, userId: state.currentUser?.id || null, dismissToast: null };
+    pendingDeletes.set(id, pending);
+
+    returnToList();
+    clearRecipeUrl();
+    rerenderList();
+    pending.dismissToast = showToast(t("status.recipeDeletedUndo", { title: recipe.title || t("card.untitled") }), "info", UNDO_DELETE_MS, {
+      actionLabel: t("common.undo"),
+      onAction: () => undoDelete(id)
+    });
+  }
+
+  function restorePendingRecipe(pending) {
+    if (state.recipes.some((item) => item.id === pending.recipe.id)) return;
+    state.recipes.splice(Math.min(pending.index, state.recipes.length), 0, pending.recipe);
+    rerenderList();
+  }
+
+  function undoDelete(id) {
+    const pending = pendingDeletes.get(id);
+    if (!pending) return;
+    window.clearTimeout(pending.timerId);
+    pendingDeletes.delete(id);
+    restorePendingRecipe(pending);
+    showToast(t("status.deleteUndone", { title: pending.recipe.title || t("card.untitled") }), "success", 3000);
+  }
+
+  async function commitDelete(id) {
+    const pending = pendingDeletes.get(id);
+    if (!pending) return;
+    window.clearTimeout(pending.timerId);
+    pendingDeletes.delete(id);
+    // Its Undo would no longer work.
+    pending.dismissToast?.();
+
+    if (!hasSupabaseConfig) {
+      saveLocalRecipes(state.recipes);
+      return;
     }
-
-    const { error } = await client.from("recipes").delete().eq("id", id).eq("user_id", state.currentUser.id);
+    // The row first: if that fails, the recipe comes back with its photo intact.
+    const { error } = await client.from("recipes").delete().eq("id", id).eq("user_id", pending.userId);
     if (error) {
+      restorePendingRecipe(pending);
       setAppStatus(t("status.deleteFailed", { error: error.message }));
       return;
     }
-
-    setAppStatus(t("status.recipeDeleted"));
-    setDetailOpen(false);
-    clearRecipeUrl();
-    await loadRecipes();
+    const imagePathToDelete = normalizeStoragePath(pending.recipe.image_url);
+    if (imagePathToDelete) {
+      const { error: storageError } = await client.storage.from(BUCKET).remove([imagePathToDelete]);
+      if (storageError) logSupabaseError("delete recipe image", storageError);
+    }
   }
+
+  // Leaving the page ends the undo window: delete now rather than never (and take
+  // the Undo away, since it would no longer work).
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "hidden") return;
+    Array.from(pendingDeletes.keys()).forEach((id) => void commitDelete(id));
+  });
 
   function isEmailNotConfirmedError(error) {
     const msg = String(error?.message || "").toLowerCase();
@@ -1851,7 +1921,8 @@
     const recipeId = state.editingRecipeId;
     const recipe = recipeId ? state.recipes.find((item) => item.id === recipeId) : null;
 
-    resetRecipeFormState();
+    const keptDraft = !isEditing && Boolean(collectDraftHasContent());
+    resetRecipeFormState({ keepDraft: true });
 
     if (recipe) {
       showDetail(recipe);
@@ -1861,8 +1932,32 @@
       setAddRecipeOpen(false);
     }
 
-    setAppStatus(isEditing ? t("status.editCanceled") : t("status.addCanceled"));
+    setAppStatus(isEditing ? t("status.editCanceled") : keptDraft ? t("status.draftKept") : t("status.addCanceled"));
   }
+
+  function collectDraftHasContent() {
+    const read = (name) => recipeForm.elements[name]?.value || "";
+    return draftHasContent({
+      title: read("title"), description: read("description"), ingredients: read("ingredients"),
+      method: read("method"), notes: read("notes"), serves: read("serves"), category: read("category"),
+      imageUrl: imageUrlInput?.value || "", prepHours: prepHoursInput?.value || "", prepMinutes: prepMinutesInput?.value || "",
+      cookHours: cookHoursInput?.value || "", cookMinutes: cookMinutesInput?.value || ""
+    });
+  }
+
+  if (discardDraft) {
+    discardDraft.addEventListener("click", () => {
+      resetRecipeFormState();
+      recipeImportUrlInput?.focus();
+    });
+  }
+
+  // Leaving the page (closing the tab, switching apps) saves straight away rather
+  // than waiting for the half-second pause after typing.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") saveDraft();
+  });
+  window.addEventListener("pagehide", () => saveDraft());
 
   if (closeRecipeForm) {
     closeRecipeForm.addEventListener("click", closeRecipeFormView);
@@ -2611,7 +2706,13 @@
   toggleAddRecipe.addEventListener("click", () => {
     const shouldShow = addRecipeSection.classList.contains("hidden");
     if (shouldShow && !state.editingRecipeId) {
-      resetRecipeFormState();
+      resetRecipeFormState({ keepDraft: true });
+      const draft = loadDraft(DRAFT_LOCAL_KEY);
+      if (draft) {
+        restoreDraft(draft);
+        void refreshImportQuota();
+        return;
+      }
     }
     setAddRecipeOpen(shouldShow);
     if (shouldShow && !state.editingRecipeId) {
@@ -2812,6 +2913,28 @@
     clearRecipeUrl();
   });
 
+  if (downloadBackup) {
+    downloadBackup.addEventListener("click", () => {
+      const recipes = (state.recipes || []).map((recipe) => {
+        const copy = { ...recipe };
+        Object.keys(copy).forEach((key) => {
+          if (key.startsWith("_")) delete copy[key];
+        });
+        return copy;
+      });
+      const backup = { app: "Storecipe", exportedAt: new Date().toISOString(), count: recipes.length, recipes };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `storecipe-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      showToast(t("backup.done", { count: recipes.length }), "success", 4000);
+    });
+  }
+
   if (homeLink) {
     homeLink.addEventListener("click", (event) => {
       // Plain clicks stay in the app; Ctrl/Cmd-click still opens a new tab.
@@ -2908,8 +3031,8 @@
     ) {
       await loadRecipes();
 
-      const draft = loadDraft();
-      if (draft && state.currentUser) {
+      const draft = loadDraft(EDIT_DRAFT_LOCAL_KEY) || loadDraft(DRAFT_LOCAL_KEY);
+      if (draft && draft.formOpen !== false && state.currentUser) {
         restoreDraft(draft);
       }
 

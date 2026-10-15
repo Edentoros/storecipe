@@ -110,7 +110,9 @@
       setRecipeListLoading(false);
     }
 
-    function showToast(message, type = "info", durationMs = 4000) {
+    // options.actionLabel + options.onAction add a button (e.g. Undo) that runs
+    // the action and dismisses the toast.
+    function showToast(message, type = "info", durationMs = 4000, options = {}) {
       if (!toastContainer || !message) return;
       const toast = document.createElement("div");
       toast.className = `toast toast--${type}`;
@@ -119,6 +121,15 @@
       text.className = "toast__text";
       text.textContent = message;
       toast.appendChild(text);
+
+      let actionBtn = null;
+      if (options.actionLabel && typeof options.onAction === "function") {
+        actionBtn = document.createElement("button");
+        actionBtn.className = "toast__action";
+        actionBtn.type = "button";
+        actionBtn.textContent = options.actionLabel;
+        toast.appendChild(actionBtn);
+      }
 
       const closeBtn = document.createElement("button");
       closeBtn.className = "toast__close";
@@ -140,8 +151,16 @@
         setTimeout(() => toast.remove(), 400);
       };
       closeBtn.addEventListener("click", (e) => { e.stopPropagation(); dismiss(); });
+      if (actionBtn) {
+        actionBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          dismiss();
+          options.onAction();
+        });
+      }
       toast.addEventListener("click", dismiss);
       if (durationMs > 0) setTimeout(dismiss, durationMs);
+      return dismiss;
     }
 
     function inferToastType(message) {

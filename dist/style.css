@@ -4540,6 +4540,78 @@ body.theme-dark .panel--auth:not(.panel--auth-modal) .settings-prefs {
     padding: 0 1rem;
   }
 }
+/* ── Toast action (Undo) ────────────────────────────────────────────────── */
+.toast .toast__action {
+  flex-shrink: 0;
+  margin: 0;
+  min-height: 0;
+  padding: 0.25rem 0.7rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.toast .toast__action:hover {
+  background: rgba(0, 0, 0, 0.14);
+  transform: none;
+  box-shadow: none;
+}
+
+body.theme-dark .toast .toast__action {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ── Draft notice in the add form ───────────────────────────────────────── */
+.draft-notice:not(.hidden) {
+  display: flex;
+}
+
+.draft-notice {
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 12px;
+  background: #fbeee6;
+  color: #7a3412;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.draft-notice .draft-notice__discard {
+  all: unset;
+  cursor: pointer;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.draft-notice .draft-notice__discard:focus-visible {
+  outline: 2px solid #cc5a24;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+body.theme-dark .draft-notice {
+  background: rgba(204, 90, 36, 0.16);
+  color: #f3b48f;
+}
+
+/* ── Backup in settings ─────────────────────────────────────────────────── */
+.settings-backup {
+  width: 100%;
+  margin-top: 0;
+}
+
+.panel--auth:not(.panel--auth-modal) .settings-field--backup {
+  display: none;
+}
+
 /* ── Gentle transitions between screens ─────────────────────────────────── */
 @keyframes view-in {
   from {

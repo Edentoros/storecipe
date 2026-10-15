@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
-    <link rel="stylesheet" href="dist/style.css?v=20261015e" />
+    <link rel="stylesheet" href="dist/style.css?v=20261015f" />
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -135,6 +135,11 @@
             </div>
             <p id="sunsetInfoText" class="settings-field__hint hidden" aria-live="polite"></p>
           </div>
+          <div class="settings-field settings-field--backup">
+            <span class="settings-field__label" data-i18n="backup.label">Your recipes</span>
+            <button id="downloadBackup" type="button" class="button button--secondary settings-backup" data-i18n="backup.button">Download a backup</button>
+            <p class="settings-field__hint" data-i18n="backup.hint">All your recipes in one file, to keep somewhere safe. Photos aren't included.</p>
+          </div>
         </div>
 
         <button id="signOutButton" class="button button--ghost settings-signout hidden" type="button" data-i18n="auth.signOut">Sign Out</button>
@@ -239,6 +244,10 @@
           </button>
         </div>
         <form id="recipeForm" class="recipe-form--import-only">
+          <div id="draftNotice" class="draft-notice hidden" role="status">
+            <span data-i18n="draft.restored">Your unsaved draft is back.</span>
+            <button id="discardDraft" type="button" class="draft-notice__discard" data-i18n="draft.discard">Discard draft</button>
+          </div>
           <div id="recipeImportTools" class="recipe-import-tools">
             <label for="recipeImportUrl" class="sr-only" data-i18n="import.heading">Import from a website</label>
             <p class="recipe-import-tools__hint" data-i18n="import.hint">Paste a link to any recipe page and we'll tidy it up and save it.</p>
@@ -492,6 +501,6 @@
     <script defer src="src/js/features/friendsManager.js"></script>
     <script defer src="src/js/features/importNotice.js"></script>
     <script defer src="src/js/services/supabaseServices.js"></script>
-    <script defer src="app.js?v=20261015e"></script>
+    <script defer src="app.js?v=20261015f"></script>
   </body>
 </html>
