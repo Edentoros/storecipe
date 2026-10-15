@@ -2,7 +2,7 @@
   function createViewManager({ dom, state, config, callbacks, i18n }) {
     const {
       searchPanel, listPanel, addRecipeSection, recipeDetail, detailContent,
-      searchInput, toggleAddRecipe, recipeForm, addButtonWideQuery
+      searchInput, toggleAddRecipe, recipeForm
     } = dom;
     const { hasSupabaseConfig } = config;
     const { resetRecipeFormState, resetRecipeListLoadingState } = callbacks;
@@ -12,16 +12,11 @@
       return Boolean(state.currentUser);
     }
 
-    function getClosedAddLabel() {
-      return addButtonWideQuery.matches ? t("list.addNew") : "+";
-    }
-
     function setToggleAddRecipeState(isOpen) {
-      const isWideClosedState = !isOpen && addButtonWideQuery.matches;
-      toggleAddRecipe.textContent = isOpen ? "x" : getClosedAddLabel();
+      toggleAddRecipe.textContent = isOpen ? "x" : t("list.addNew");
       toggleAddRecipe.setAttribute("aria-expanded", isOpen ? "true" : "false");
       toggleAddRecipe.setAttribute("aria-label", isOpen ? t("list.hideAdd") : t("list.showAdd"));
-      toggleAddRecipe.classList.toggle("icon-button--text", isWideClosedState);
+      toggleAddRecipe.classList.toggle("icon-button--text", !isOpen);
     }
 
     function setRecipeUiEnabled(enabled) {

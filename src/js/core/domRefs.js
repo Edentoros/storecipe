@@ -109,8 +109,7 @@ function getDomRefs() {
     friendsList: document.getElementById("friendsList"),
     friendsEmpty: document.getElementById("friendsEmpty"),
     toggleFriendsFeed: document.getElementById("toggleFriendsFeed"),
-    recipeListHeading: document.getElementById("recipeListHeading"),
-    addButtonWideQuery: window.matchMedia("(min-width: 768px)")
+    recipeListHeading: document.getElementById("recipeListHeading")
   };
 }
 

@@ -4,6 +4,16 @@
   box-sizing: border-box;
 }
 
+/* Safari (iOS 26+) colours the strip behind the clock from the page's solid
+   background, not theme-color, and can't use the body's gradient. */
+html {
+  background-color: #f8f5ee;
+}
+
+html:has(> body.theme-dark) {
+  background-color: #0b1622;
+}
+
 body {
   margin: 0;
   /* Inter everywhere; the fallbacks are each platform's own modern UI font. */

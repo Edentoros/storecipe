@@ -176,8 +176,7 @@
     friendsList,
     friendsEmpty,
     toggleFriendsFeed,
-    recipeListHeading,
-    addButtonWideQuery
+    recipeListHeading
   } = getDomRefs();
 
   const state = createAppState({ DEFAULT_THEME, DEFAULT_LANGUAGE });
@@ -794,7 +793,7 @@
   const viewManager = createViewManager({
     dom: {
       searchPanel, listPanel, addRecipeSection, recipeDetail, detailContent,
-      searchInput, toggleAddRecipe, recipeForm, addButtonWideQuery
+      searchInput, toggleAddRecipe, recipeForm
     },
     state,
     config: { hasSupabaseConfig },
@@ -2334,16 +2333,6 @@
       void refreshEditImageTools(recipe);
       setAppStatus(t("status.imageUndone"));
     });
-  }
-
-  const handleAddButtonViewportChange = () => {
-    const isOpen = !addRecipeSection.classList.contains("hidden");
-    setToggleAddRecipeState(isOpen);
-  };
-  if (typeof addButtonWideQuery.addEventListener === "function") {
-    addButtonWideQuery.addEventListener("change", handleAddButtonViewportChange);
-  } else if (typeof addButtonWideQuery.addListener === "function") {
-    addButtonWideQuery.addListener(handleAddButtonViewportChange);
   }
 
   searchInput.addEventListener("input", debounce(() => {
