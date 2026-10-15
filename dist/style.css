@@ -4541,3 +4541,98 @@ body.theme-dark .cook-mode__switch {
     transition: none;
   }
 }
+/* ── Designer pass: calmer header, tidier cards, two-tone dark theme ──────── */
+body.theme-dark {
+  background: #0b1622;
+}
+
+body.theme-dark .panel {
+  background: #172636;
+}
+
+body.theme-dark .recipe-card,
+body.theme-dark .recipe-list-skeleton {
+  background: #172636;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+@media (hover: hover) {
+  body.theme-dark .recipe-card:hover {
+    background: #1d2f42;
+    border-color: transparent;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  }
+}
+body.theme-dark .recipe-search__bar input {
+  background: #172636;
+  border-color: transparent;
+}
+
+.recipe-card .recipe-card__fav-button {
+  margin: 0;
+  top: 8px;
+  right: 8px;
+}
+
+.app__settings-button.app__tool-button,
+body.theme-dark .app__settings-button.app__tool-button {
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  opacity: 0.75;
+}
+
+@media (hover: hover) {
+  .app__settings-button.app__tool-button:hover:not(:disabled),
+  body.theme-dark .app__settings-button.app__tool-button:hover:not(:disabled) {
+    background: transparent;
+    box-shadow: none;
+    opacity: 1;
+  }
+}
+.recipe-search__bar {
+  position: relative;
+}
+
+.recipe-search__bar input {
+  padding-right: 2.9rem;
+}
+
+.recipe-search__bar .recipe-search__filters-toggle,
+body.theme-dark .recipe-search__bar .recipe-search__filters-toggle,
+.panel--list .recipe-search__bar .recipe-search__filters-toggle {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.recipe-search__bar .recipe-search__filters-toggle:hover,
+.recipe-search__bar .recipe-search__filters-toggle[aria-expanded=true] {
+  opacity: 1;
+}
+
+.recipe-search__bar .recipe-search__filters-toggle[aria-expanded=true] {
+  color: #cc5a24;
+}
+
+.recipe-search__filters-toggle .recipe-search__count {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 1rem;
+  height: 1rem;
+  font-size: 0.65rem;
+}
+
