@@ -4541,34 +4541,7 @@ body.theme-dark .cook-mode__switch {
     transition: none;
   }
 }
-/* ── Designer pass: calmer header, tidier cards, two-tone dark theme ──────── */
-body.theme-dark {
-  background: #0b1622;
-}
-
-body.theme-dark .panel {
-  background: #172636;
-}
-
-body.theme-dark .recipe-card,
-body.theme-dark .recipe-list-skeleton {
-  background: #172636;
-  border-color: transparent;
-  box-shadow: none;
-}
-
-@media (hover: hover) {
-  body.theme-dark .recipe-card:hover {
-    background: #1d2f42;
-    border-color: transparent;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
-  }
-}
-body.theme-dark .recipe-search__bar input {
-  background: #172636;
-  border-color: transparent;
-}
-
+/* ── Designer pass: calmer header, tidier cards ─────────────────────────── */
 .recipe-card .recipe-card__fav-button {
   margin: 0;
   top: 8px;

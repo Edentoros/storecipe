@@ -3945,37 +3945,7 @@ body.theme-dark .cook-mode__switch {
   }
 }
 
-/* ── Designer pass: calmer header, tidier cards, two-tone dark theme ──────── */
-// Dark theme surfaces: the page sits on bg-1, cards and panels on bg-2 (same
-// hue, lighter), so cards stand out without an outline.
-$dark-bg-1: #0b1622;
-$dark-bg-2: #172636;
-$dark-bg-2-hover: #1d2f42;
-
-body.theme-dark {
-  background: $dark-bg-1;
-}
-body.theme-dark .panel {
-  background: $dark-bg-2;
-}
-body.theme-dark .recipe-card,
-body.theme-dark .recipe-list-skeleton {
-  background: $dark-bg-2;
-  border-color: transparent;
-  box-shadow: none;
-}
-@media (hover: hover) {
-  body.theme-dark .recipe-card:hover {
-    background: $dark-bg-2-hover;
-    border-color: transparent;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
-  }
-}
-body.theme-dark .recipe-search__bar input {
-  background: $dark-bg-2;
-  border-color: transparent;
-}
-
+/* ── Designer pass: calmer header, tidier cards ─────────────────────────── */
 // Like button: the same 8px from the top and right edges of the photo.
 // (Every button has a default top margin, which pushed it down.)
 .recipe-card .recipe-card__fav-button {
