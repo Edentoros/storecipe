@@ -2785,6 +2785,32 @@
     clearRecipeUrl();
   });
 
+  // Tapping anywhere outside an open recipe closes it, like Back. Only counts when
+  // the press also started outside (so the tap that opened the recipe, or a text
+  // selection dragged out of it, doesn't close it), and not on the header,
+  // settings, overlays or toasts, or while a section is being edited.
+  const OUTSIDE_CLOSE_EXCLUDED =
+    ".app__header, #authPanel, #settingsBackdrop, .modal-overlay, .image-fullview-overlay, .toast-container";
+  const isOutsideOpenRecipe = (target) =>
+    !recipeDetail.classList.contains("hidden") &&
+    target instanceof Element &&
+    target.isConnected &&
+    !recipeDetail.contains(target) &&
+    !target.closest(OUTSIDE_CLOSE_EXCLUDED) &&
+    !state.isSettingsOpen &&
+    !detailContent.querySelector(".recipe-inline-editor");
+  let pressStartedOutsideRecipe = false;
+  document.addEventListener("pointerdown", (event) => {
+    pressStartedOutsideRecipe = isOutsideOpenRecipe(event.target);
+  });
+  document.addEventListener("click", (event) => {
+    const shouldClose = pressStartedOutsideRecipe && isOutsideOpenRecipe(event.target);
+    pressStartedOutsideRecipe = false;
+    if (!shouldClose) return;
+    returnToList();
+    clearRecipeUrl();
+  });
+
   if (homeLink) {
     homeLink.addEventListener("click", (event) => {
       // Plain clicks stay in the app; Ctrl/Cmd-click still opens a new tab.
