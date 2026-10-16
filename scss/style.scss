@@ -716,9 +716,12 @@ button {
   flex-wrap: wrap;
   gap: 0.5rem;
 }
-.form-actions .button {
+// Save and Cancel: same height and width. (Save has no .button class, so it
+// needs its default top margin removed too.)
+.form-actions > button {
   margin-top: 0;
-  flex: 1 1 180px;
+  flex: 1 1 140px;
+  min-height: 44px;
 }
 .icon-button {
   margin-top: 0;
@@ -4069,7 +4072,7 @@ body.theme-dark .recipe-import-tools .recipe-import-tools__photo {
 
 // Tidy up with AI, above Save.
 .tidy-up {
-  margin: 1.25rem 0 0.25rem;
+  margin: 1.25rem 0 1rem;
   padding: 0.85rem 1rem;
   border-radius: 12px;
   background: rgba(204, 90, 36, 0.06);
