@@ -15,10 +15,17 @@
     no_readable_text: "warning",
     url_blocked: "warning",
     fetch_failed: "warning",
-    quota_exceeded: "warning"
+    quota_exceeded: "warning",
+    not_recipe_text: "warning",
+    not_recipe_photo: "warning",
+    invalid_text: "warning",
+    invalid_image: "warning"
   };
   const RETRYABLE = new Set(["fetch_failed", "ai_failed", "service_unreachable", "server_error"]);
-  const NO_NEW_LINK = new Set(["quota_exceeded", "unauthenticated", "ai_unavailable", "quota_unavailable", "not_deployed", "busy"]);
+  const NO_NEW_LINK = new Set([
+    "quota_exceeded", "unauthenticated", "ai_unavailable", "quota_unavailable", "not_deployed", "busy",
+    "not_recipe_photo", "invalid_image"
+  ]);
   // Several server codes mean the same thing to the user.
   const CODE_ALIASES = { quota_unavailable: "ai_unavailable", not_deployed: "ai_unavailable", invalid_request: "server_error" };
 
@@ -74,19 +81,24 @@
       return node;
     }
 
-    function showProgress(site) {
+    // kind: "url" (a link), "text" or "photo". Text and photos have no page
+    // to open, so they start at "reading".
+    function showProgress(site, kind = "url") {
       clear();
       const card = el("div", "import-notice import-notice--progress");
       card.setAttribute("role", "status");
 
+      const steps = kind === "url" ? PROGRESS_STEPS : PROGRESS_STEPS.slice(1);
+      const title = kind === "url" ? t("import.progress.title", { site }) : t(`import.progress.title.${kind}`);
       const head = el("div", "import-notice__head");
-      head.append(el("span", "import-notice__spinner"), el("strong", "import-notice__title", t("import.progress.title", { site })));
+      head.append(el("span", "import-notice__spinner"), el("strong", "import-notice__title", title));
 
       const list = el("ol", "import-notice__steps");
-      const items = PROGRESS_STEPS.map((step) => {
+      const items = steps.map((step) => {
         const item = el("li", "import-notice__step");
         item.dataset.step = step;
-        item.append(el("span", "import-notice__step-mark"), el("span", "", t(`import.progress.${step}`)));
+        const label = kind !== "url" && step === "reading" ? t(`import.progress.reading.${kind}`) : t(`import.progress.${step}`);
+        item.append(el("span", "import-notice__step-mark"), el("span", "", label));
         list.append(item);
         return item;
       });
@@ -96,13 +108,14 @@
       render(card, "progress");
 
       const setStep = (step) => {
-        const index = PROGRESS_STEPS.indexOf(step);
+        const index = steps.indexOf(step);
+        if (index === -1) return;
         items.forEach((item, i) => {
           item.classList.toggle("is-done", i < index);
           item.classList.toggle("is-active", i === index);
         });
       };
-      setStep("opening");
+      setStep(steps[0]);
       timers.push(window.setTimeout(() => setStep("reading"), STEP_DELAYS_MS.reading));
       timers.push(window.setTimeout(() => setStep("tidying"), STEP_DELAYS_MS.tidying));
       timers.push(window.setTimeout(() => (foot.textContent = t("import.progress.slow")), SLOW_AFTER_MS));

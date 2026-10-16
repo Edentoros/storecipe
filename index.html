@@ -256,19 +256,23 @@
           </div>
           <div id="recipeImportTools" class="recipe-import-tools">
             <label for="recipeImportUrl" class="sr-only" data-i18n="import.heading">Import from a website</label>
-            <p class="recipe-import-tools__hint" data-i18n="import.hint">Paste a link to any recipe page and we'll tidy it up and save it.</p>
+            <p class="recipe-import-tools__hint" data-i18n="import.hint">Paste a link to a recipe page, or the recipe text itself, and we'll tidy it up and save it.</p>
             <div class="recipe-import-tools__row">
               <input
                 id="recipeImportUrl"
                 name="recipeImportUrl"
                 type="text"
                 data-i18n-placeholder="form.importUrlPlaceholder"
-                placeholder="Paste recipe URL (https://...)"
+                placeholder="Paste a recipe link or text"
                 autocomplete="off"
-                inputmode="url"
               />
               <button id="importRecipeButton" type="button" class="button recipe-import-tools__button" data-i18n="form.importButton">Import</button>
             </div>
+            <button id="importPhotoButton" type="button" class="recipe-import-tools__photo">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+              <span data-i18n="import.photo">Import from a photo or screenshot</span>
+            </button>
+            <input id="importPhotoInput" type="file" accept="image/*" class="hidden" />
             <div id="importNotice" class="recipe-import-tools__notice hidden"></div>
             <button id="showManualForm" type="button" class="recipe-import-tools__manual" data-i18n="import.manual">or type it in yourself</button>
             <p id="importQuotaInfo" class="recipe-import-tools__quota hidden" aria-live="polite"></p>
@@ -321,10 +325,14 @@
           </div>
 
           <label for="ingredients" data-i18n="form.ingredients">Ingredients</label>
-          <textarea id="ingredients" name="ingredients" rows="4" required></textarea>
+          <textarea id="ingredients" name="ingredients" rows="4" required data-i18n-placeholder="form.ingredientsPlaceholder" placeholder="One per line, amount first, e.g. 200 g flour"></textarea>
+          <div id="ingredientsSplitHint" class="field-hint hidden" role="status">
+            <span data-i18n="form.splitHint">Several ingredients are on one line.</span>
+            <button id="splitIngredientsButton" type="button" class="field-hint__action" data-i18n="form.splitAction">Put each on its own line</button>
+          </div>
 
           <label for="method" data-i18n="form.method">Method</label>
-          <textarea id="method" name="method" rows="6" required></textarea>
+          <textarea id="method" name="method" rows="6" required data-i18n-placeholder="form.methodPlaceholder" placeholder="One step per line"></textarea>
 
           <label for="notes" data-i18n="form.notes">Notes / Tips (optional)</label>
           <textarea id="notes" name="notes" rows="3"></textarea>
@@ -394,6 +402,14 @@
           <div class="difficulty-row">
             <input id="difficulty" name="difficulty" type="range" min="1" max="10" step="1" value="4" />
             <span id="difficultyValue" class="difficulty-value">4</span>
+          </div>
+
+          <div class="tidy-up">
+            <button id="tidyUpButton" type="button" class="button button--secondary tidy-up__button">
+              <span aria-hidden="true">&#10024;</span>
+              <span data-tidy-label data-i18n="tidy.button">Tidy up with AI</span>
+            </button>
+            <p class="tidy-up__hint" data-i18n="tidy.hint">Sorts what you've typed into a clean list of ingredients and steps. Check it, then save.</p>
           </div>
 
           <div class="form-actions">
@@ -507,6 +523,6 @@
     <script defer src="src/js/features/friendsManager.js"></script>
     <script defer src="src/js/features/importNotice.js"></script>
     <script defer src="src/js/services/supabaseServices.js"></script>
-    <script defer src="app.js?v=20261015j"></script>
+    <script defer src="app.js?v=20261016a"></script>
   </body>
 </html>

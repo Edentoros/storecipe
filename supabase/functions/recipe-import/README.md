@@ -1,7 +1,9 @@
 ## recipe-import edge function
 
-Imports a recipe from a web page link and returns structured fields for the
-Storecipe add-recipe form. The user always reviews the result before saving.
+Imports a recipe from a web page link, from text the user typed or pasted, or
+from a photo or screenshot, and returns structured fields for the Storecipe
+add-recipe form. The same AI editor and house style apply to all three; text is
+also how the form's "Tidy up" button works.
 
 ### How it works
 
@@ -33,6 +35,12 @@ Storecipe add-recipe form. The user always reviews the result before saving.
    100) per 24 hours across all accounts, so mass sign-ups can't run up the AI
    bill. Unlimited users are exempt. Inactive until `sql/abuse-protection.sql`
    has been run.
+
+9. **Text and photos.** `{ text }` (20 to 20,000 characters) or `{ image }` (a
+   JPEG, PNG or WebP `data:` URL, at most 4 MB; the app shrinks photos first)
+   skip the page fetch and go straight to the AI editor, with the prompt
+   adjusted for messy typed text or a photo. Same limits and recording as links,
+   with `text` or `photo` in `source_url`. The result never has a link or photo.
 
 What uses up a free import: a successful import, or a page the AI was asked
 about and rejected as not-a-recipe. Sites that block us, bad links and our own
@@ -68,7 +76,8 @@ supabase functions deploy recipe-import
 
 ### Responses
 
-Request: `POST { "url": "https://…", "language": "en" | "ru" }`.
+Request: `POST { "url": "https://…", "language": "en" | "ru" }`, or
+`{ "text": "…", "language": … }`, or `{ "image": "data:image/jpeg;base64,…", "language": … }`.
 
 Success: `{ recipe, source: "ai" | "json-ld", tidied, remaining }` — `remaining` is
 `null` for unlimited users.
@@ -78,7 +87,8 @@ Quota check: `POST { "action": "quota" }` → `{ unlimited, limit, remaining }`.
 Errors: `{ error, code }` where `code` is one of `unauthenticated`,
 `quota_exceeded`, `invalid_url`, `url_blocked`, `fetch_failed`, `not_html`,
 `no_readable_text`, `not_recipe`, `ai_unavailable`, `ai_failed`,
-`quota_unavailable`, `busy` (site-wide daily cap reached), `invalid_request`,
+`quota_unavailable`, `busy` (site-wide daily cap reached), `invalid_text`,
+`invalid_image`, `invalid_request`,
 `server_error`.
 
 ### image-proxy

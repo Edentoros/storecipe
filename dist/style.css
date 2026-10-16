@@ -4593,3 +4593,106 @@ body.theme-dark .recipe-search__bar .recipe-search__filters-toggle,
   font-size: 0.65rem;
 }
 
+.ingredient-list .ingredient-list__item--unadjusted {
+  opacity: 0.5;
+}
+
+.scale-note {
+  margin: 0.6rem 0 0;
+  font-size: 0.82rem;
+  color: #627d98;
+}
+
+body.theme-dark .scale-note {
+  color: #9fb3c8;
+}
+
+.field-hint:not(.hidden) {
+  display: flex;
+}
+
+.field-hint {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.6rem;
+  margin: 0.1rem 0 0.9rem;
+  font-size: 0.85rem;
+  color: #627d98;
+}
+
+.field-hint .field-hint__action {
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  background: none;
+  box-shadow: none;
+  color: #cc5a24;
+  font-weight: 600;
+  font-size: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+body.theme-dark .field-hint {
+  color: #9fb3c8;
+}
+
+.recipe-import-tools .recipe-import-tools__photo {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 0.85rem;
+  min-height: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px #ebe4d9;
+  color: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+@media (hover: hover) {
+  .recipe-import-tools .recipe-import-tools__photo:hover {
+    background: rgba(204, 90, 36, 0.06);
+    box-shadow: inset 0 0 0 1px rgba(204, 90, 36, 0.45);
+  }
+}
+.recipe-import-tools--busy .recipe-import-tools__photo,
+#recipeForm:not(.recipe-form--import-only) .recipe-import-tools__photo {
+  display: none;
+}
+
+body.theme-dark .recipe-import-tools .recipe-import-tools__photo {
+  box-shadow: inset 0 0 0 1px #334e68;
+}
+
+.tidy-up {
+  margin: 1.25rem 0 0.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: rgba(204, 90, 36, 0.06);
+}
+
+.tidy-up .tidy-up__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.tidy-up__hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: #627d98;
+}
+
+body.theme-dark .tidy-up {
+  background: rgba(204, 90, 36, 0.1);
+}
+
+body.theme-dark .tidy-up__hint {
+  color: #9fb3c8;
+}
+

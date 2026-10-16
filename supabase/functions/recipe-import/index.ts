@@ -1,7 +1,9 @@
 import {
   blockedUrlReason,
   buildSystemPrompt,
+  buildTextMessage,
   buildUserMessage,
+  cleanRecipeText,
   decodeHtml,
   extractJsonLdBlocks,
   extractMainText,
@@ -13,11 +15,14 @@ import {
   looksLikeRecipe,
   normalizeAiRecipe,
   parseHttpUrl,
+  parseImageDataUrl,
   recipeFromJsonLd,
   resolveLanguage,
   summariseStructuredRecipe,
   RECIPE_JSON_SCHEMA,
-  type ImportedRecipe
+  MAX_IMAGE_DATA_URL_CHARS,
+  type ImportedRecipe,
+  type SourceKind
 } from "./lib.ts";
 
 const corsHeaders = {
@@ -264,14 +269,10 @@ async function fetchPage(startUrl: URL): Promise<{ html: string; finalUrl: URL }
 
 // ── AI extraction ───────────────────────────────────────────────────────────
 
-async function extractWithAi(
-  pageUrl: string,
-  pageTitle: string,
-  ogImage: string | null,
-  structured: ReturnType<typeof summariseStructuredRecipe> | null,
-  pageText: string,
-  language: string
-) {
+// userContent: plain text, or text plus an image for photos.
+type UserContent = string | Array<Record<string, unknown>>;
+
+async function extractWithAi(kind: SourceKind, userContent: UserContent, language: string) {
   if (!OPENAI_API_KEY) {
     throw new ImportError("ai_unavailable", 503, "AI import isn't configured yet (missing OPENAI_API_KEY).");
   }
@@ -285,8 +286,8 @@ async function extractWithAi(
       max_completion_tokens: 3000,
       response_format: { type: "json_schema", json_schema: RECIPE_JSON_SCHEMA },
       messages: [
-        { role: "system", content: buildSystemPrompt(language) },
-        { role: "user", content: buildUserMessage(pageUrl, pageTitle, ogImage, structured, pageText) }
+        { role: "system", content: buildSystemPrompt(language, kind) },
+        { role: "user", content: userContent }
       ]
     })
   }).catch(() => {
@@ -306,6 +307,46 @@ async function extractWithAi(
   }
 }
 
+// ── Text and photo imports ──────────────────────────────────────────────────
+// Recorded like page imports, with "text" or "photo" in place of the link.
+
+async function importWithoutPage(
+  caller: Caller,
+  body: Record<string, unknown>,
+  used: number,
+  unlimited: boolean
+) {
+  const language = resolveLanguage(body?.language);
+  let kind: SourceKind;
+  let userContent: UserContent;
+  if (body.image !== undefined) {
+    const image = parseImageDataUrl(body.image);
+    if (!image) throw new ImportError("invalid_image", 400, "Send a JPEG, PNG or WebP photo.");
+    kind = "photo";
+    userContent = [
+      { type: "text", text: "The photo:" },
+      { type: "image_url", image_url: { url: image, detail: "high" } }
+    ];
+  } else {
+    const text = cleanRecipeText(body.text);
+    if (!text) throw new ImportError("invalid_text", 400, "Write or paste a bit more of the recipe first.");
+    kind = "text";
+    userContent = buildTextMessage(text);
+  }
+
+  const raw = await extractWithAi(kind, userContent, language);
+  // No link and no page photo: never take an image address the AI came up with.
+  const recipe: ImportedRecipe = { ...normalizeAiRecipe(raw, "", "", null), image_url: null, source_url: "" };
+  if (raw.is_recipe === true && looksLikeRecipe(recipe)) {
+    await recordImport(caller, kind, "ai", "ok");
+    return jsonResponse(200, { recipe, source: "ai", tidied: true, remaining: remainingAfter(used + 1, unlimited) });
+  }
+  await recordImport(caller, kind, "ai", "rejected");
+  return errorResponse(new ImportError("not_recipe", 422, "That doesn't look like a cooking recipe."), {
+    remaining: remainingAfter(used + 1, unlimited)
+  });
+}
+
 // ── Handler ─────────────────────────────────────────────────────────────────
 
 function remainingAfter(used: number, unlimited: boolean): number | null {
@@ -321,7 +362,10 @@ Deno.serve(async (request) => {
     const unlimited = UNLIMITED_USER_IDS.has(caller.id);
 
     const rawBody = await request.text();
-    if (rawBody.length > 10_000) throw new ImportError("invalid_request", 400, "Request too large.");
+    // Photos arrive as data URLs; everything else is a few hundred bytes.
+    if (rawBody.length > MAX_IMAGE_DATA_URL_CHARS + 10_000) {
+      throw new ImportError("invalid_image", 413, "That photo is too large. Try a smaller one.");
+    }
     const body = (() => {
       try {
         return JSON.parse(rawBody || "{}");
@@ -345,6 +389,11 @@ Deno.serve(async (request) => {
     }
 
     if (!unlimited) await assertUnderSiteDailyLimit(caller);
+
+    // Typed/pasted text and photos: no page to fetch, straight to the AI editor.
+    if (body?.text !== undefined || body?.image !== undefined) {
+      return await importWithoutPage(caller, body, used, unlimited);
+    }
 
     const requestedUrl = parseHttpUrl(body?.url);
     if (!requestedUrl) throw new ImportError("invalid_url", 400, "Paste a full web address starting with http:// or https://.");
@@ -380,11 +429,8 @@ Deno.serve(async (request) => {
     let raw: Record<string, unknown>;
     try {
       raw = await extractWithAi(
-        sourceUrl,
-        pageTitle,
-        ogImage,
-        node ? summariseStructuredRecipe(node) : null,
-        pageText,
+        "page",
+        buildUserMessage(sourceUrl, pageTitle, ogImage, node ? summariseStructuredRecipe(node) : null, pageText),
         language
       );
     } catch (error) {

@@ -17,7 +17,6 @@ function createRecipeRenderer({
     formatDuration,
     getDisplayImageUrl,
     getDirectImageUrl,
-    scaleIngredients,
     renderIngredientListHtml,
     renderMethodListHtml
   } = helpers;
@@ -401,11 +400,12 @@ function createRecipeRenderer({
             <span class="serving-scaler__value" data-scale-display>${escapeHtml(String(serves))}</span>
             <span class="serving-scaler__label">${escapeHtml(t("detail.servings"))}</span>
             <button type="button" class="serving-scaler__btn" data-action="scale-up" aria-label="${escapeHtml(t("detail.scaleUp"))}">&plus;</button>
-            <button type="button" class="serving-scaler__reset button--ghost" data-action="scale-reset">${escapeHtml(t("detail.scaleReset"))}</button>
+            <button type="button" class="serving-scaler__reset button--ghost hidden" data-action="scale-reset">${escapeHtml(t("detail.scaleReset"))}</button>
           </div>` : ""}
           ${isOwner
             ? `<div class="inline-edit-trigger recipe-detail-card__editable" data-action="inline-edit-field" data-field="ingredients" data-field-content="ingredients" role="button" tabindex="0" aria-label="${escapeHtml(t("detail.editIngredients"))}">${renderIngredientListHtml(recipe.ingredients)}</div>`
             : `<div class="recipe-detail-card__editable recipe-detail-card__editable--readonly">${renderIngredientListHtml(recipe.ingredients)}</div>`}
+          ${serves ? `<p class="scale-note hidden" data-scale-note="ingredients"></p>` : ""}
         </section>
 
         <section class="recipe-detail-card__section" data-field="method">
@@ -415,6 +415,7 @@ function createRecipeRenderer({
           ${isOwner
             ? `<div class="inline-edit-trigger recipe-detail-card__editable" data-action="inline-edit-field" data-field="method" data-field-content="method" role="button" tabindex="0" aria-label="${escapeHtml(t("detail.editMethod"))}">${renderMethodListHtml(recipe.method)}</div>`
             : `<div class="recipe-detail-card__editable recipe-detail-card__editable--readonly">${renderMethodListHtml(recipe.method)}</div>`}
+          ${serves ? `<p class="scale-note hidden" data-scale-note="method"></p>` : ""}
         </section>
         </div>
 

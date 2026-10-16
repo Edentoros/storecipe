@@ -51,7 +51,7 @@
     shrinkImageForUpload,
     debounce
   } = window.StorecipeHelpers;
-  const { scaleIngredients } = window.StorecipeIngredientParser;
+  const { scaleIngredientList } = window.StorecipeIngredientParser;
   const { createRecipeMetaManager } = window.StorecipeRecipeMetaManager;
   const { createRecipeRenderer } = window.StorecipeRecipeRenderer;
   const { createSupabaseServices } = window.StorecipeSupabaseServices;
@@ -282,6 +282,8 @@
     updateRecipeViaRest,
     fetchRecipesViaRest,
     importRecipeFromUrlViaFunction,
+    importRecipeFromTextViaFunction,
+    importRecipeFromImageViaFunction,
     fetchImportQuotaViaFunction,
     uploadImage,
     fetchExternalImageAsFile,
@@ -449,7 +451,7 @@
         input: recipeImportUrlInput,
         wrapper: recipeImportTools,
         i18n,
-        onRetry: () => void runRecipeImport(),
+        onRetry: () => void runRecipeImport(lastImportRequest),
         onManual: () => showManualRecipeFields({ focus: true })
       })
     : null;
@@ -625,6 +627,7 @@
     hideEditImageTools();
     importNotice?.clear();
     if (draftNotice) draftNotice.classList.add("hidden");
+    document.getElementById("ingredientsSplitHint")?.classList.add("hidden");
   }
 
   // Saved from the first character typed. formOpen remembers whether the form
@@ -865,7 +868,6 @@
       formatDuration,
       getDisplayImageUrl,
       getDirectImageUrl,
-      scaleIngredients,
       renderIngredientListHtml,
       renderMethodListHtml
     },
@@ -1818,25 +1820,54 @@
     }
   }
 
-  async function runRecipeImport() {
+  // Pasted text with no link in it, long enough to be a recipe (e.g. a recipe
+  // copied out of a chat), is imported as text.
+  function looksLikeRecipeText(text) {
+    const raw = String(text || "").trim();
+    return raw.length >= 20 && /\s/.test(raw);
+  }
+
+  // What to retry if the last import failed.
+  let lastImportRequest = {};
+
+  // request: {} to import what's in the link box (a link, or recipe text), or
+  // { photo: dataUrl } for a photo or screenshot.
+  async function runRecipeImport(request = {}) {
     if (state.isImportingRecipe) return;
 
-    const url = extractImportUrl(recipeImportUrlInput?.value);
-    if (!isValidHttpUrl(url)) {
-      importNotice?.showError({ code: "invalid_url" });
-      recipeImportUrlInput?.focus();
-      return;
+    let kind;
+    let site = "";
+    let call;
+    const language = state.currentLanguage;
+    if (request.photo) {
+      kind = "photo";
+      call = () => importRecipeFromImageViaFunction(request.photo, language);
+    } else {
+      const rawInput = recipeImportUrlInput?.value || "";
+      const url = extractImportUrl(rawInput);
+      if (isValidHttpUrl(url)) {
+        kind = "url";
+        // Show the tidied-up link (e.g. "https://" added, surrounding text dropped).
+        if (recipeImportUrlInput) recipeImportUrlInput.value = url;
+        site = hostnameOf(url);
+        call = () => importRecipeFromUrlViaFunction(url, language);
+      } else if (looksLikeRecipeText(rawInput)) {
+        kind = "text";
+        call = () => importRecipeFromTextViaFunction(rawInput.trim(), language);
+      } else {
+        importNotice?.showError({ code: "invalid_url" });
+        recipeImportUrlInput?.focus();
+        return;
+      }
     }
-    // Show the tidied-up link (e.g. "https://" added, surrounding text dropped).
-    if (recipeImportUrlInput) recipeImportUrlInput.value = url;
-    const site = hostnameOf(url);
+    lastImportRequest = request;
 
     state.isImportingRecipe = true;
     updateImportButtonUi();
-    const progress = importNotice?.showProgress(site);
+    const progress = importNotice?.showProgress(site, kind);
 
     try {
-      const data = await importRecipeFromUrlViaFunction(url, state.currentLanguage);
+      const data = await call();
       const importedRecipe = data?.recipe && typeof data.recipe === "object" ? data.recipe : null;
       if (!importedRecipe) {
         throw new Error("Import response did not include recipe data.");
@@ -1860,11 +1891,15 @@
       if (saved) {
         importNotice?.clear();
         if (recipeImportUrlInput) recipeImportUrlInput.value = "";
+        if (kind !== "url") {
+          showToast(t(kind === "photo" ? "status.importedSavedPhoto" : "status.importedSavedText", { title }), "success", 5000);
+          return;
+        }
         // tidied === false: the AI wasn't available, so this is the site's raw data.
         const caveat = data?.tidied === false ? "untidied" : photoSkipped ? "noPhoto" : "";
         const key = caveat === "untidied" ? "status.importedSavedUntidied" : caveat === "noPhoto" ? "status.importedSavedNoPhoto" : "status.importedSaved";
         // Name the site the recipe really came from (the link may have redirected).
-        const source = hostnameOf(normalizeImportedText(importedRecipe.source_url) || url);
+        const source = hostnameOf(normalizeImportedText(importedRecipe.source_url) || site);
         showToast(t(key, { source, title }), caveat ? "info" : "success", caveat ? 8000 : 5000);
       } else {
         // Keep the filled-in form on screen so nothing is lost.
@@ -1873,12 +1908,143 @@
       }
     } catch (error) {
       showImportQuota(error);
-      importNotice?.showError({ code: error?.code, site, message: error?.message });
+      const code = error?.code === "not_recipe" && kind !== "url" ? `not_recipe_${kind}` : error?.code;
+      importNotice?.showError({ code, site, message: error?.message });
     } finally {
       state.isImportingRecipe = false;
       updateImportButtonUi();
     }
   }
+
+  // ── Import from a photo or screenshot ──────────────────────────────────────
+  // Shrunk in the browser first (like recipe photos), so it uploads quickly.
+  const IMPORT_PHOTO_MAX_BYTES = 2.8 * 1024 * 1024;
+  const importPhotoInput = document.getElementById("importPhotoInput");
+  document.getElementById("importPhotoButton")?.addEventListener("click", () => {
+    if (!state.isImportingRecipe) importPhotoInput?.click();
+  });
+  importPhotoInput?.addEventListener("change", async () => {
+    const file = importPhotoInput.files?.[0];
+    importPhotoInput.value = "";
+    if (!file) return;
+    try {
+      const shrunk = await shrinkImageForUpload(file);
+      if (!/^image\/(jpeg|png|webp)$/.test(shrunk.type) || shrunk.size > IMPORT_PHOTO_MAX_BYTES) {
+        importNotice?.showError({ code: "invalid_image" });
+        return;
+      }
+      await runRecipeImport({ photo: await readFileAsDataUrl(shrunk) });
+    } catch (_error) {
+      importNotice?.showError({ code: "invalid_image" });
+    }
+  });
+
+  // ── Tidy up: the AI editor for a recipe typed into the form ────────────────
+  const tidyUpButton = document.getElementById("tidyUpButton");
+
+  const TIDY_FIELDS = ["title", "description", "category", "ingredients", "method", "notes"];
+  function snapshotRecipeForm() {
+    const snapshot = {};
+    for (const name of TIDY_FIELDS) snapshot[name] = recipeForm.elements[name]?.value || "";
+    snapshot.prepHours = prepHoursInput?.value || "";
+    snapshot.prepMinutes = prepMinutesInput?.value || "";
+    snapshot.cookHours = cookHoursInput?.value || "";
+    snapshot.cookMinutes = cookMinutesInput?.value || "";
+    snapshot.serves = servesInput?.value || "";
+    snapshot.difficulty = difficultyInput?.value || "";
+    return snapshot;
+  }
+
+  function restoreRecipeForm(snapshot) {
+    for (const name of TIDY_FIELDS) {
+      if (recipeForm.elements[name]) recipeForm.elements[name].value = snapshot[name];
+    }
+    if (prepHoursInput) prepHoursInput.value = snapshot.prepHours;
+    if (prepMinutesInput) prepMinutesInput.value = snapshot.prepMinutes;
+    if (cookHoursInput) cookHoursInput.value = snapshot.cookHours;
+    if (cookMinutesInput) cookMinutesInput.value = snapshot.cookMinutes;
+    if (servesInput) servesInput.value = snapshot.serves;
+    if (difficultyInput && snapshot.difficulty) {
+      difficultyInput.value = snapshot.difficulty;
+      syncDifficultyUi();
+    }
+    recipeForm.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  // The form as plain text, labelled so the AI keeps each part where it belongs.
+  function recipeFormAsText(snapshot) {
+    const time = (hours, minutes) =>
+      [hours && `${hours} h`, minutes && `${minutes} min`].filter(Boolean).join(" ");
+    const parts = [
+      ["Title", snapshot.title],
+      ["Description", snapshot.description],
+      ["Category", snapshot.category],
+      ["Serves", snapshot.serves],
+      ["Prep time", time(snapshot.prepHours, snapshot.prepMinutes)],
+      ["Cook time", time(snapshot.cookHours, snapshot.cookMinutes)],
+      ["Ingredients", snapshot.ingredients],
+      ["Method", snapshot.method],
+      ["Notes", snapshot.notes]
+    ];
+    return parts
+      .filter(([, value]) => String(value || "").trim())
+      .map(([label, value]) => `${label}:\n${String(value).trim()}`)
+      .join("\n\n");
+  }
+
+  function setTidyUpBusy(busy) {
+    if (!tidyUpButton) return;
+    tidyUpButton.disabled = busy;
+    tidyUpButton.setAttribute("aria-busy", busy ? "true" : "false");
+    const label = tidyUpButton.querySelector("[data-tidy-label]");
+    if (label) label.textContent = t(busy ? "tidy.busy" : "tidy.button");
+    tidyUpButton.querySelector(".button-spinner")?.remove();
+    if (busy) {
+      const spinner = document.createElement("span");
+      spinner.className = "button-spinner";
+      spinner.setAttribute("aria-hidden", "true");
+      tidyUpButton.prepend(spinner);
+    }
+  }
+
+  async function runTidyUp() {
+    if (state.isImportingRecipe) return;
+    const before = snapshotRecipeForm();
+    if (!before.ingredients.trim() && !before.method.trim()) {
+      showToast(t("tidy.needMore"), "info", 5000);
+      recipeForm.elements.ingredients?.focus();
+      return;
+    }
+    state.isImportingRecipe = true;
+    updateImportButtonUi();
+    setTidyUpBusy(true);
+    try {
+      const data = await importRecipeFromTextViaFunction(recipeFormAsText(before), state.currentLanguage);
+      if (!data?.recipe || typeof data.recipe !== "object") throw new Error("Tidy up did not return a recipe.");
+      // Keep what the AI left out (it never removes a photo or adds a link).
+      applyImportedRecipeToForm(data.recipe);
+      if (!normalizeImportedText(data.recipe.category) && recipeForm.elements.category) {
+        recipeForm.elements.category.value = before.category;
+      }
+      recipeForm.dispatchEvent(new Event("input", { bubbles: true }));
+      updateIngredientsSplitHint();
+      showImportQuota(data);
+      showToast(t("tidy.done"), "success", 10000, {
+        actionLabel: t("tidy.undo"),
+        onAction: () => restoreRecipeForm(before)
+      });
+    } catch (error) {
+      showImportQuota(error);
+      const code = error?.code === "not_recipe" ? "not_recipe_text" : error?.code;
+      const key = t(`import.notice.${code}.title`) !== `import.notice.${code}.title` ? code : "server_error";
+      showToast(`${t(`import.notice.${key}.title`)}. ${t(`import.notice.${key}.body`, { site: "", error: "" })}`, "info", 8000);
+    } finally {
+      state.isImportingRecipe = false;
+      updateImportButtonUi();
+      setTidyUpBusy(false);
+    }
+  }
+  tidyUpButton?.addEventListener("click", () => void runTidyUp());
 
   authForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -2113,6 +2279,36 @@
     saveDraftDebounced();
   };
   recipeForm.addEventListener("input", saveDraftUnlessImportField);
+
+  // "1kg potatoes, 2 onions, 2 carrots" on one line: offer to split it, so the
+  // list reads well and the servings scaler can handle each ingredient.
+  const ingredientsSplitHint = document.getElementById("ingredientsSplitHint");
+  const { splitIngredientsLine } = window.StorecipeIngredientParser;
+  function splitIngredientsText(text) {
+    return String(text || "")
+      .split("\n")
+      .flatMap((line) => {
+        const items = splitIngredientsLine(line);
+        return items.length > 1 ? items : [line];
+      })
+      .join("\n");
+  }
+  function updateIngredientsSplitHint() {
+    const field = recipeForm.elements.ingredients;
+    if (!ingredientsSplitHint || !field) return;
+    const value = field.value || "";
+    ingredientsSplitHint.classList.toggle("hidden", splitIngredientsText(value) === value);
+  }
+  if (recipeForm.elements.ingredients) {
+    recipeForm.elements.ingredients.addEventListener("input", updateIngredientsSplitHint);
+    recipeForm.elements.ingredients.addEventListener("focus", updateIngredientsSplitHint);
+  }
+  document.getElementById("splitIngredientsButton")?.addEventListener("click", () => {
+    const field = recipeForm.elements.ingredients;
+    field.value = splitIngredientsText(field.value);
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+    field.focus();
+  });
   recipeForm.addEventListener("change", saveDraftUnlessImportField);
 
   if (showManualForm) {
@@ -2993,23 +3189,38 @@
     if (scaleBtn) {
       const scaler = scaleBtn.closest(".serving-scaler");
       if (!scaler) return;
-      const origServes = Number(scaler.dataset.originalServes) || 1;
+      const origServes = Number.parseInt(scaler.dataset.originalServes, 10) || 1;
       const origIngredients = scaler.dataset.originalIngredients || "";
       const display = scaler.querySelector("[data-scale-display]");
       if (!display) return;
       let current = Number(display.textContent) || origServes;
       const action = scaleBtn.dataset.action;
-      if (action === "scale-down" && current > 2) current -= 2;
-      else if (action === "scale-up" && current < 98) current += 2;
+      if (action === "scale-down" && current > 1) current -= 1;
+      else if (action === "scale-up" && current < 99) current += 1;
       else if (action === "scale-reset") current = origServes;
       display.textContent = String(current);
-      const section = scaler.closest("[data-field='ingredients']");
-      const contentEl = section?.querySelector("[data-field-content='ingredients']");
+      const changed = current !== origServes;
+      scaler.querySelector("[data-action='scale-reset']")?.classList.toggle("hidden", !changed);
+
+      const card = scaler.closest(".recipe-detail-card") || detailContent;
+      const contentEl = card.querySelector("[data-field-content='ingredients']") ||
+        scaler.closest("[data-field='ingredients']")?.querySelector(".recipe-detail-card__editable");
+      const lines = scaleIngredientList(origIngredients, origServes, current);
+      const unadjusted = lines.map((line) => changed && line.status === "unadjusted");
       if (contentEl) {
-        const scaled = scaleIngredients(origIngredients, origServes, current);
         // Must match the detail renderer's structure, or scaling would replace
         // the ingredient list with flat text.
-        contentEl.innerHTML = renderIngredientListHtml(scaled);
+        contentEl.innerHTML = renderIngredientListHtml(lines.map((line) => line.text).join("\n"), unadjusted);
+      }
+      const ingredientsNote = card.querySelector("[data-scale-note='ingredients']");
+      if (ingredientsNote) {
+        ingredientsNote.textContent = t("detail.scaleUnadjusted");
+        ingredientsNote.classList.toggle("hidden", !unadjusted.some(Boolean));
+      }
+      const methodNote = card.querySelector("[data-scale-note='method']");
+      if (methodNote) {
+        methodNote.textContent = t("detail.scaleMethodNote", { serves: origServes });
+        methodNote.classList.toggle("hidden", !changed);
       }
       return;
     }

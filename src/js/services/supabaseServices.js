@@ -504,6 +504,16 @@ function createSupabaseServices({ config, state, helpers }) {
     return callRecipeImportFunction({ url, language });
   }
 
+  // Recipe text the user typed or pasted (also the form's "Tidy up").
+  function importRecipeFromTextViaFunction(text, language) {
+    return callRecipeImportFunction({ text, language });
+  }
+
+  // A photo or screenshot of a recipe, as a data: URL.
+  function importRecipeFromImageViaFunction(image, language) {
+    return callRecipeImportFunction({ image, language });
+  }
+
   function fetchImportQuotaViaFunction() {
     return callRecipeImportFunction({ action: "quota" });
   }
@@ -731,6 +741,8 @@ function createSupabaseServices({ config, state, helpers }) {
     updateRecipeViaRest,
     fetchRecipesViaRest,
     importRecipeFromUrlViaFunction,
+    importRecipeFromTextViaFunction,
+    importRecipeFromImageViaFunction,
     fetchImportQuotaViaFunction,
     uploadImage,
     fetchExternalImageAsFile,

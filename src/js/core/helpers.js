@@ -39,16 +39,19 @@ function normalizeTheme(value) {
  * Shared by the detail renderer and the serving scaler, which rewrites the
  * ingredient block in place and must emit identical structure.
  */
-function renderIngredientListHtml(text) {
+// `unadjusted`: optional flags, one per non-blank line, for lines the servings
+// scaler couldn't change; they're shown greyed out.
+function renderIngredientListHtml(text, unadjusted = []) {
   const lines = String(text ?? "")
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
   if (!lines.length) return "";
-  const items = lines.map((line) => {
+  const items = lines.map((line, index) => {
     // "For the sauce:" style group headings, not actual ingredients.
     const isSubhead = line.endsWith(":") && line.length <= 60;
-    const cls = isSubhead ? "ingredient-list__subhead" : "ingredient-list__item";
+    let cls = isSubhead ? "ingredient-list__subhead" : "ingredient-list__item";
+    if (unadjusted[index]) cls += " ingredient-list__item--unadjusted";
     return `<li class="${cls}">${escapeHtml(line)}</li>`;
   });
   return `<ul class="ingredient-list">${items.join("")}</ul>`;
