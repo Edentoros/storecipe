@@ -23,7 +23,14 @@ function shorten(text: string, max: number) {
   return clean.length > max ? `${clean.slice(0, max - 1).trimEnd()}…` : clean;
 }
 
-type Shared = { recipe?: Record<string, unknown>; photoUrl?: string | null };
+type Shared = { recipe?: Record<string, unknown>; photoUrl?: string | null; sharedBy?: string | null };
+
+// "Dima sent you a recipe." in the recipe's own language (Russian if it's
+// written in Cyrillic), since the preview card is shown whichever app the
+// link was sent through, even when the message text gets dropped.
+function senderLine(name: string, recipeText: string) {
+  return /[\u0400-\u04FF]/.test(recipeText) ? `${name} делится с вами рецептом.` : `${name} sent you a recipe.`;
+}
 
 async function lookup(token: string): Promise<Shared | null> {
   const url = Netlify.env.get("SUPABASE_URL");
@@ -43,10 +50,10 @@ export function previewTags(shared: Shared, pageUrl: string, origin: string): { 
   const recipe = shared.recipe || {};
   const title = shorten(String(recipe.title || "Recipe"), 90);
   const ingredients = String(recipe.ingredients || "").split("\n").map((l) => l.trim()).filter(Boolean);
-  const description = shorten(
-    String(recipe.description || "").trim() || ingredients.slice(0, 4).join(", "),
-    200
-  );
+  const about = String(recipe.description || "").trim() || ingredients.slice(0, 4).join(", ");
+  const name = shorten(String(shared.sharedBy || ""), 40);
+  const sender = name ? senderLine(name, `${recipe.title || ""} ${about}`) : "";
+  const description = shorten([sender, about].filter(Boolean).join(" "), 220);
   const image = /^https:\/\//i.test(String(shared.photoUrl || "")) ? String(shared.photoUrl) : `${origin}/icons/icon-512.png`;
   const tags = [
     ["og:type", "article"],

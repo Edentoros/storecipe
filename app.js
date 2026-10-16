@@ -2708,7 +2708,13 @@
         if (error?.name !== "AbortError") await copyShareLink(recipe);
       }
     } else {
-      await copyShareLink(recipe);
+      // Computers: copy the whole message, ready to paste into a chat.
+      try {
+        await navigator.clipboard.writeText(`${text}\n${url}`);
+        showToast(t("share.messageCopied"), "success", 5000);
+      } catch (_error) {
+        await copyShareLink(recipe);
+      }
     }
     nudgeForDisplayName();
   }

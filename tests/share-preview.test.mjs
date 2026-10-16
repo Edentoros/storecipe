@@ -45,12 +45,18 @@ test("a shared recipe gets its own title, description and photo", async () => {
   assert.match(html, /<title>Chilli con carne – Storecipe<\/title>/);
   assert.match(html, /<meta property="og:title" content="Chilli con carne" \/>/);
   assert.match(html, /<meta property="og:image" content="https:\/\/proj\.supabase\.co\/storage\/v1\/object\/sign\/recipes\/u\/p\.jpg\?token=abc" \/>/);
-  assert.match(html, /<meta property="og:description" content="Rich &amp; smoky &quot;proper&quot; chilli &lt;b&gt;" \/>/);
+  assert.match(html, /<meta property="og:description" content="Dima sent you a recipe\. Rich &amp; smoky &quot;proper&quot; chilli &lt;b&gt;" \/>/);
   assert.match(html, /<meta name="twitter:card" content="summary_large_image" \/>/);
   assert.equal((html.match(/<meta name="description"/g) || []).length, 1, "one description");
   assert.ok(!html.includes("<!-- share-preview -->"));
   assert.equal(res.headers.get("cache-control"), "no-store");
   assert.equal(res.headers.get("content-length"), null);
+});
+
+test("the sender line follows the recipe's language", async () => {
+  answer.body = { recipe: { title: "Борщ", description: "Свекольный суп." }, photoUrl: null, sharedBy: "Дима" };
+  const { html } = await run(`https://storecipe.netlify.app/share.html?token=${TOKEN}`);
+  assert.match(html, /og:description" content="Дима делится с вами рецептом\. Свекольный суп\."/);
 });
 
 test("without a description or photo: first ingredients and the app icon", async () => {
