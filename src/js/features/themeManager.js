@@ -81,6 +81,8 @@
         document.body.classList.toggle("theme-dark", normalizedTheme === "dark");
       }
       updateThemeToggleUi();
+      // The real theme is on: drop the early dark paint (bootTheme.js).
+      document.documentElement.classList.remove("theme-dark-boot");
 
       if (persistForCurrentUser) {
         const key = state.currentUser?.id

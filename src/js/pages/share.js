@@ -33,6 +33,7 @@
   const hour = new Date().getHours();
   const dark = theme === "dark" || (theme === "sunset" && (hour >= 19 || hour < 7));
   document.body.classList.toggle("theme-dark", dark);
+  document.documentElement.classList.remove("theme-dark-boot");
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#0b1622" : "#f8f5ee");
 
   // Signed in to Storecipe in this browser? (Only changes the button's wording;

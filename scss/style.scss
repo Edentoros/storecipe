@@ -4312,3 +4312,17 @@ body.theme-dark .shared-page a.button.button--secondary {
     min-height: 42px;
   }
 }
+
+// Early dark paint while the app loads (bootTheme.js), so it doesn't flash
+// white at night. Removed as soon as the app applies the real theme.
+html.theme-dark-boot,
+html.theme-dark-boot body {
+  background: #0b1622;
+  color: #e4edf6;
+}
+html.theme-dark-boot .startup-loader {
+  background: #0b1622;
+}
+html.theme-dark-boot .startup-loader p {
+  color: #9fb3c8;
+}

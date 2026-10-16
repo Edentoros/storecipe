@@ -4932,4 +4932,17 @@ body.theme-dark .shared-page a.button.button--secondary {
     min-height: 42px;
   }
 }
+html.theme-dark-boot,
+html.theme-dark-boot body {
+  background: #0b1622;
+  color: #e4edf6;
+}
+
+html.theme-dark-boot .startup-loader {
+  background: #0b1622;
+}
+
+html.theme-dark-boot .startup-loader p {
+  color: #9fb3c8;
+}
 
