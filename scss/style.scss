@@ -3646,6 +3646,10 @@ body.theme-dark .recipe-card .recipe-card__category-badge {
   display: grid;
   gap: 0.4rem;
 }
+// .settings-field comes after the .hidden utility, so restate it.
+.settings-field.hidden {
+  display: none;
+}
 .settings-field__label {
   font-size: 0.74rem;
   font-weight: 700;

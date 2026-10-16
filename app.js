@@ -51,7 +51,7 @@
     shrinkImageForUpload,
     debounce
   } = window.StorecipeHelpers;
-  const { scaleIngredientList } = window.StorecipeIngredientParser;
+  const { scaleIngredientList, nextServings } = window.StorecipeIngredientParser;
   const { createRecipeMetaManager } = window.StorecipeRecipeMetaManager;
   const { createRecipeRenderer } = window.StorecipeRecipeRenderer;
   const { createSupabaseServices } = window.StorecipeSupabaseServices;
@@ -3411,8 +3411,8 @@
       if (!display) return;
       let current = Number(display.textContent) || origServes;
       const action = scaleBtn.dataset.action;
-      if (action === "scale-down" && current > 1) current -= 1;
-      else if (action === "scale-up" && current < 99) current += 1;
+      if (action === "scale-down") current = nextServings(current, -1);
+      else if (action === "scale-up") current = nextServings(current, 1);
       else if (action === "scale-reset") current = origServes;
       display.textContent = String(current);
       const changed = current !== origServes;

@@ -8,7 +8,7 @@
   const SUPABASE_KEY = config.SUPABASE_PUBLISHABLE_KEY || "";
   const TOKEN_RE = /^[A-Za-z0-9_-]{16,64}$/;
   const helpers = window.StorecipeHelpers;
-  const { scaleIngredientList } = window.StorecipeIngredientParser;
+  const { scaleIngredientList, nextServings } = window.StorecipeIngredientParser;
   const { escapeHtml, renderIngredientListHtml, renderMethodListHtml, parseDurationText, normalizeDifficulty } = helpers;
 
   // Same language and theme as the app, if this browser has used it.
@@ -151,7 +151,7 @@
     if (!looksSignedIn()) cta.classList.remove("hidden");
   }
 
-  // Same behaviour as the app's scaler (steps of 1, greyed lines it can't adjust).
+  // Same behaviour as the app's scaler (even numbers, greyed lines it can't adjust).
   function attachScaler(ingredients, original) {
     const card = container.querySelector(".shared-recipe");
     const display = card.querySelector("[data-scale-display]");
@@ -159,8 +159,8 @@
       const action = event.target.closest("[data-action]")?.dataset.action;
       if (!action) return;
       let current = Number(display.textContent) || original;
-      if (action === "scale-down" && current > 1) current -= 1;
-      else if (action === "scale-up" && current < 99) current += 1;
+      if (action === "scale-down") current = nextServings(current, -1);
+      else if (action === "scale-up") current = nextServings(current, 1);
       else if (action === "scale-reset") current = original;
       display.textContent = String(current);
       const changed = current !== original;

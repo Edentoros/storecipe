@@ -4207,6 +4207,10 @@ body.theme-dark .recipe-card .recipe-card__category-badge {
   gap: 0.4rem;
 }
 
+.settings-field.hidden {
+  display: none;
+}
+
 .settings-field__label {
   font-size: 0.74rem;
   font-weight: 700;

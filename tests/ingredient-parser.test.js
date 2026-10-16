@@ -134,6 +134,26 @@ describe("splitIngredientsLine", () => {
   });
 });
 
+describe("nextServings", () => {
+  it("moves through even numbers", () => {
+    assert.equal(P.nextServings(2, 1), 4);
+    assert.equal(P.nextServings(4, 1), 6);
+    assert.equal(P.nextServings(6, -1), 4);
+  });
+
+  it("snaps an odd count to the next even number either way", () => {
+    assert.equal(P.nextServings(3, 1), 4);
+    assert.equal(P.nextServings(3, -1), 2);
+    assert.equal(P.nextServings(1, 1), 2);
+  });
+
+  it("stays between 2 and 98", () => {
+    assert.equal(P.nextServings(2, -1), 2);
+    assert.equal(P.nextServings(1, -1), 2);
+    assert.equal(P.nextServings(98, 1), 98);
+  });
+});
+
 describe("decimalToFraction", () => {
   it("writes kitchen fractions", () => {
     assert.equal(P.decimalToFraction(0.5), "½");
