@@ -373,6 +373,9 @@ function createRecipeRenderer({
             <h2 tabindex="-1">${escapeHtml(recipe.title)}</h2>
             ${isOwner
               ? `<div class="recipe-detail-card__top-actions">
+                  <button class="recipe-detail-card__round-button" type="button" data-action="share" data-id="${recipe.id}" aria-label="${escapeHtml(t("share.button"))}" title="${escapeHtml(t("share.button"))}">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>
+                  </button>
                   <button class="recipe-detail-card__round-button" type="button" data-action="edit" data-id="${recipe.id}" aria-label="${escapeHtml(t("detail.edit"))}" title="${escapeHtml(t("detail.edit"))}">
                     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg>
                   </button>
@@ -381,6 +384,14 @@ function createRecipeRenderer({
               : ""}
           </div>
           <p class="recipe-detail-card__date">${escapeHtml(dateLine)} ${categoryHtml}${sourceHtml}</p>
+          ${isOwner && recipe.is_public && recipe.share_token
+            ? `<p class="share-status">
+                <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>
+                <span>${escapeHtml(t("share.status"))}</span>
+                <button type="button" class="share-status__action" data-action="copy-share-link" data-id="${recipe.id}">${escapeHtml(t("share.copyLink"))}</button>
+                <button type="button" class="share-status__action" data-action="stop-sharing" data-id="${recipe.id}">${escapeHtml(t("share.stop"))}</button>
+              </p>`
+            : ""}
           ${recipe.description
             ? (isOwner
                 ? `<button class="inline-edit-trigger recipe-detail-card__description" data-action="inline-edit-field" data-field="description" data-field-content="description" type="button" aria-label="${escapeHtml(t("detail.editDescription"))}">${escapeHtml(recipe.description).replace(/\n/g, "<br />")}</button>`
@@ -447,9 +458,6 @@ function createRecipeRenderer({
           </button>
           <button class="button button--secondary hidden" type="button" data-action="duplicate" data-id="${recipe.id}">
             ${escapeHtml(t("detail.duplicate"))}
-          </button>
-          <button class="button button--secondary hidden" type="button" data-action="share" data-id="${recipe.id}">
-            ${escapeHtml(t("detail.share"))}
           </button>
           <button class="button button--ghost recipe-detail-card__print-button" type="button" data-action="print">
             ${escapeHtml(t("detail.print"))}

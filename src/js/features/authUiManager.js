@@ -288,7 +288,8 @@
       if (pendingAuthError) {
         pendingAuthError = false;
       } else {
-        setAuthStatus(isSignedIn ? `Signed in as ${state.currentUser.email}` : SIGNED_OUT_PROMPT);
+        const signedOutPrompt = typeof SIGNED_OUT_PROMPT === "function" ? SIGNED_OUT_PROMPT() : SIGNED_OUT_PROMPT;
+        setAuthStatus(isSignedIn ? `Signed in as ${state.currentUser.email}` : signedOutPrompt);
       }
       if (!isSignedIn) {
         setAppStatus("");

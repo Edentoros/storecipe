@@ -3,28 +3,46 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Shared Recipe - Storecipe</title>
+    <title>Shared recipe – Storecipe</title>
+    <meta name="description" content="A recipe shared from Storecipe." />
+    <meta name="theme-color" content="#f8f5ee" />
+    <meta name="robots" content="noindex" />
     <link rel="icon" href="icons/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="dist/style.css" />
-    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png?v=2" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+    <link rel="stylesheet" href="dist/style.css?v=20261016b" />
   </head>
   <body>
-    <main class="app">
+    <main class="app app--ready shared-page">
       <header class="app__header">
         <div class="app__header-top">
-          <h1><a href="index.html" style="color:inherit;text-decoration:none;">Storecipe</a></h1>
+          <h1 class="app__brand">
+            <a class="app__brand-link" href="./" aria-label="Storecipe">
+              <span class="app__brand-mark" aria-hidden="true"></span>Storecipe
+            </a>
+          </h1>
         </div>
       </header>
 
-      <section id="sharedRecipePanel" class="panel panel--detail">
-        <a href="index.html" class="button button--secondary" style="display:inline-block;margin-bottom:1rem;">Back to App</a>
+      <section class="panel panel--detail" aria-live="polite">
         <div id="sharedContent">
-          <p>Loading recipe...</p>
+          <p class="shared-page__status" data-i18n="share.page.loading">Loading recipe…</p>
         </div>
+      </section>
+
+      <section id="sharedCta" class="shared-cta hidden">
+        <h2 data-i18n="share.page.ctaTitle">Keep all your recipes in one place</h2>
+        <p data-i18n="share.page.ctaBody">Storecipe saves recipes from any website, photo or message, tidied up and ready to cook.</p>
+        <a class="button button--secondary shared-cta__button" href="./" data-i18n="share.page.openApp">Open Storecipe</a>
       </section>
     </main>
 
     <script src="src/js/core/config.js"></script>
-    <script defer src="src/js/pages/share.js"></script>
+    <script defer src="src/js/core/helpers.js"></script>
+    <script defer src="src/js/core/i18n.js"></script>
+    <script defer src="src/js/core/ingredientParser.js"></script>
+    <script defer src="src/js/pages/share.js?v=20261016b"></script>
   </body>
 </html>

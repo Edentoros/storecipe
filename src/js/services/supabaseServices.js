@@ -514,6 +514,34 @@ function createSupabaseServices({ config, state, helpers }) {
     return callRecipeImportFunction({ image, language });
   }
 
+  // "Save to my recipes" for a recipe shared by link (shared-recipe function).
+  async function saveSharedRecipeViaFunction(token) {
+    let accessToken;
+    try {
+      accessToken = getAccessToken();
+    } catch (_authError) {
+      const error = new Error("Not signed in");
+      error.code = "unauthenticated";
+      throw error;
+    }
+    const response = await debugFetch(`${SUPABASE_URL}/functions/v1/shared-recipe`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ action: "save", token })
+    }, { retries: 0 });
+    const data = await parseResponse(response, {});
+    if (!response.ok) {
+      const error = new Error(data?.error || `Saving the shared recipe failed with status ${response.status}`);
+      error.code = data?.code || null;
+      throw error;
+    }
+    return data;
+  }
+
   function fetchImportQuotaViaFunction() {
     return callRecipeImportFunction({ action: "quota" });
   }
@@ -669,7 +697,8 @@ function createSupabaseServices({ config, state, helpers }) {
 
   async function toggleRecipePublicViaRest(recipeId, userId, makePublic) {
     const accessToken = getAccessToken();
-    const shareToken = makePublic ? crypto.randomUUID().replace(/-/g, "").slice(0, 16) : null;
+    // 128 random bits: share links can't be guessed.
+    const shareToken = makePublic ? crypto.randomUUID().replace(/-/g, "") : null;
     const query = new URLSearchParams({
       id: `eq.${recipeId}`,
       user_id: `eq.${userId}`
@@ -743,6 +772,7 @@ function createSupabaseServices({ config, state, helpers }) {
     importRecipeFromUrlViaFunction,
     importRecipeFromTextViaFunction,
     importRecipeFromImageViaFunction,
+    saveSharedRecipeViaFunction,
     fetchImportQuotaViaFunction,
     uploadImage,
     fetchExternalImageAsFile,
