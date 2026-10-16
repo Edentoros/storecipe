@@ -2466,6 +2466,7 @@ body.theme-dark #closeDetail {
   .recipe-detail-card__actions,
   .serving-scaler,
   .recipe-detail-card__fav-button,
+  .recipe-detail-card__top-actions,
   .recipe-detail-card__add-notes,
   .recipe-detail-card__add-description,
   .recipe-gallery__remove,
@@ -4093,4 +4094,49 @@ body.theme-dark .tidy-up {
 }
 body.theme-dark .tidy-up__hint {
   color: #9fb3c8;
+}
+
+// Edit (and favourite) at the top of the recipe page, so you don't have to
+// scroll to the bottom to change something.
+.recipe-detail-card .recipe-detail-card__top-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.recipe-detail-card .recipe-detail-card__top-actions > button {
+  margin: 0;
+}
+.recipe-detail-card .recipe-detail-card__round-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid #e4e7eb;
+  border-radius: 50%;
+  background: none;
+  color: #7b8794;
+  transition: color 0.2s, border-color 0.2s;
+}
+.recipe-detail-card .recipe-detail-card__round-button:hover {
+  color: $accent;
+  border-color: rgba(204, 90, 36, 0.45);
+}
+body.theme-dark .recipe-detail-card .recipe-detail-card__round-button {
+  border-color: #2d3748;
+  color: #9fb3c8;
+}
+body.theme-dark .recipe-detail-card .recipe-detail-card__round-button:hover {
+  color: #f0a57f;
+}
+
+// Phones: no Print button (nobody prints from a phone).
+@media (max-width: 559px) {
+  .recipe-detail-card .recipe-detail-card__actions .recipe-detail-card__print-button {
+    display: none;
+  }
 }

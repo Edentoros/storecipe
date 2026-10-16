@@ -371,7 +371,14 @@ function createRecipeRenderer({
         <div class="recipe-detail-card__header">
           <div class="recipe-detail-card__title-row">
             <h2 tabindex="-1">${escapeHtml(recipe.title)}</h2>
-            ${isOwner ? `<button class="${favClass}" type="button" data-action="toggle-fav" data-id="${recipe.id}" aria-label="${escapeHtml(favLabel)}">${favHeart}</button>` : ""}
+            ${isOwner
+              ? `<div class="recipe-detail-card__top-actions">
+                  <button class="recipe-detail-card__round-button" type="button" data-action="edit" data-id="${recipe.id}" aria-label="${escapeHtml(t("detail.edit"))}" title="${escapeHtml(t("detail.edit"))}">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg>
+                  </button>
+                  <button class="${favClass}" type="button" data-action="toggle-fav" data-id="${recipe.id}" aria-label="${escapeHtml(favLabel)}">${favHeart}</button>
+                </div>`
+              : ""}
           </div>
           <p class="recipe-detail-card__date">${escapeHtml(dateLine)} ${categoryHtml}${sourceHtml}</p>
           ${recipe.description
