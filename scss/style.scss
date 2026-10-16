@@ -4300,3 +4300,11 @@ body.theme-dark .shared-page a.button.button--secondary {
   flex-shrink: 0;
   margin: 0;
 }
+
+// Settings and Add recipe line up (their widths are matched in app.js).
+@media (min-width: 720px) {
+  .app__header .app__settings-button.app__tool-button {
+    justify-content: center;
+    min-height: 42px;
+  }
+}

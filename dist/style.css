@@ -4922,3 +4922,10 @@ body.theme-dark .shared-page a.button.button--secondary {
   margin: 0;
 }
 
+@media (min-width: 720px) {
+  .app__header .app__settings-button.app__tool-button {
+    justify-content: center;
+    min-height: 42px;
+  }
+}
+

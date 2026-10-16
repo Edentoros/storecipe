@@ -2339,6 +2339,31 @@
   };
   recipeForm.addEventListener("input", saveDraftUnlessImportField);
 
+  // Settings and Add recipe: the same width when both show their labels
+  // (the one-row layout from 720px), whichever label is longer in the current language.
+  const headerButtonsWide = window.matchMedia("(min-width: 720px)");
+  function syncHeaderButtonWidths() {
+    if (!settingsButton || !toggleAddRecipe) return;
+    settingsButton.style.minWidth = "";
+    toggleAddRecipe.style.minWidth = "";
+    const bothShowLabels =
+      headerButtonsWide.matches &&
+      toggleAddRecipe.classList.contains("icon-button--text") &&
+      settingsButton.offsetParent !== null &&
+      toggleAddRecipe.offsetParent !== null;
+    if (!bothShowLabels) return;
+    const width = `${Math.ceil(Math.max(settingsButton.offsetWidth, toggleAddRecipe.offsetWidth))}px`;
+    settingsButton.style.minWidth = width;
+    toggleAddRecipe.style.minWidth = width;
+  }
+  if (typeof ResizeObserver === "function" && settingsButton && toggleAddRecipe) {
+    // Fires when either appears, changes label or language, or fonts load.
+    const headerButtonsObserver = new ResizeObserver(() => syncHeaderButtonWidths());
+    headerButtonsObserver.observe(settingsButton);
+    headerButtonsObserver.observe(toggleAddRecipe);
+  }
+  headerButtonsWide.addEventListener?.("change", syncHeaderButtonWidths);
+
   // "1kg potatoes, 2 onions, 2 carrots" on one line: offer to split it, so the
   // list reads well and the servings scaler can handle each ingredient.
   const ingredientsSplitHint = document.getElementById("ingredientsSplitHint");
