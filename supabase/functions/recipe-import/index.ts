@@ -39,11 +39,12 @@ const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-4.1-nano";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
 
-// Successful imports (plus pages the AI rejected as not-a-recipe) per user.
+// Successful imports (plus pages the AI rejected as not-a-recipe) per user per
+// 24 hours (a rolling window, so it doesn't depend on anyone's time zone).
 const FREE_IMPORT_LIMIT = Math.max(0, Number(Deno.env.get("FREE_IMPORT_LIMIT") ?? 5) || 0);
 // Comma-separated auth user ids that are never limited (the app owner).
 // Site-wide ceiling on imports per 24 hours, across all accounts (new accounts
-// each get FREE_IMPORT_LIMIT, so this caps what mass sign-ups could cost).
+// each get FREE_IMPORT_LIMIT a day, so this caps what mass sign-ups could cost).
 // Unlimited users aren't affected. 0 turns it off. Needs sql/abuse-protection.sql.
 const SITE_DAILY_IMPORT_LIMIT = Math.max(0, Number(Deno.env.get("SITE_DAILY_IMPORT_LIMIT") ?? 100) || 0);
 const UNLIMITED_USER_IDS = new Set(
@@ -108,7 +109,8 @@ async function getCaller(request: Request): Promise<Caller> {
 
 async function countUsedImports(caller: Caller): Promise<number> {
   const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/recipe_imports?select=id&user_id=eq.${encodeURIComponent(caller.id)}`,
+    `${SUPABASE_URL}/rest/v1/recipe_imports?select=id&user_id=eq.${encodeURIComponent(caller.id)}` +
+      `&created_at=gte.${encodeURIComponent(new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())}`,
     { method: "HEAD", headers: { apikey: caller.apiKey, Authorization: caller.authHeader, Prefer: "count=exact" } }
   );
   const total = Number((response.headers.get("content-range") || "").split("/")[1]);
@@ -383,7 +385,7 @@ Deno.serve(async (request) => {
 
     if (!unlimited && used >= FREE_IMPORT_LIMIT) {
       return errorResponse(
-        new ImportError("quota_exceeded", 402, `You've used all ${FREE_IMPORT_LIMIT} free imports.`),
+        new ImportError("quota_exceeded", 402, `You've used today's ${FREE_IMPORT_LIMIT} free imports. More tomorrow.`),
         { remaining: 0 }
       );
     }

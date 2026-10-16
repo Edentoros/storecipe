@@ -41,7 +41,12 @@ globalThis.fetch = async (input, init = {}) => {
     return id ? Response.json({ id }) : new Response("{}", { status: 401 });
   }
   if (url.startsWith(`${SUPA}/rest/v1/recipe_imports`)) {
-    if (method === "HEAD") return new Response(null, { status: 200, headers: { "content-range": `*/${imports.length}` } });
+    if (method === "HEAD") {
+      // Like PostgREST: only rows matching created_at=gte.<time> count.
+      const since = new URL(url).searchParams.get("created_at")?.replace(/^gte\./, "");
+      const counted = imports.filter((row) => !since || new Date(row.created_at ?? Date.now()) >= new Date(since));
+      return new Response(null, { status: 200, headers: { "content-range": `*/${counted.length}` } });
+    }
     if (method === "POST") { imports.push(...JSON.parse(init.body)); return new Response(null, { status: 201 }); }
   }
   if (url === `${SUPA}/rest/v1/rpc/recipe_imports_last_24h`) return Response.json(0);
@@ -132,8 +137,16 @@ test("anything but a JPEG, PNG or WebP data URL is refused", async () => {
   assert.equal(aiRequests.length, 0);
 });
 
+test("the free limit is per 24 hours: older imports don't count", async () => {
+  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+  imports = Array.from({ length: 5 }, () => ({ user_id: "user-1", created_at: twoDaysAgo }));
+  const { status, data } = await call({ text: TYPED, language: "en" });
+  assert.equal(status, 200);
+  assert.equal(data.remaining, 4);
+});
+
 test("text and photo imports respect the free limit", async () => {
-  imports = Array.from({ length: 5 }, () => ({ user_id: "user-1" }));
+  imports = Array.from({ length: 5 }, () => ({ user_id: "user-1", created_at: new Date().toISOString() }));
   const { status, data } = await call({ text: TYPED, language: "en" });
   assert.equal(status, 402);
   assert.equal(data.code, "quota_exceeded");

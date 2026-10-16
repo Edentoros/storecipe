@@ -8,8 +8,8 @@ also how the form's "Tidy up" button works.
 ### How it works
 
 1. **Signed-in users only.** The caller's Supabase token is verified.
-2. **Free limit.** Each user gets `FREE_IMPORT_LIMIT` imports (default 5),
-   counted in the `recipe_imports` table. The limit is checked *before* any page
+2. **Free limit.** Each user gets `FREE_IMPORT_LIMIT` imports (default 5) per 24
+   hours (a rolling window), counted in the `recipe_imports` table. The limit is checked *before* any page
    is fetched or AI is called. Users listed in `IMPORT_UNLIMITED_USER_IDS` are
    never limited.
 3. **Safe fetching.** Only public `http`/`https` addresses on standard ports.
