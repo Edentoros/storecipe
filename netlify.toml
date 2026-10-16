@@ -2,6 +2,13 @@
   publish = "site"
   command = "bash build.sh"
 
+# Short share links: /r/<code> shows the shared recipe page (the address
+# stays short; share.js and the share-preview edge function read the code).
+[[redirects]]
+  from = "/r/*"
+  to = "/share.html"
+  status = 200
+
 # Security headers. The Content Security Policy only lets the page run its own
 # scripts plus the pinned Supabase library, and only talk to Supabase; photos
 # may come from any https site (imported recipes link to them).

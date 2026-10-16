@@ -2675,7 +2675,7 @@
   // The first Share creates the link (is_public + a random token); after that
   // Share just shares it. Stop sharing removes the token, so the old link dies.
   function shareUrlFor(token) {
-    return `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, "")}share.html?token=${encodeURIComponent(token)}`;
+    return `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, "")}r/${encodeURIComponent(token)}`;
   }
 
   async function setRecipeShared(recipe, makePublic) {

@@ -36,6 +36,7 @@ beforeEach(() => {
 
 test("runs on the share page", () => {
   assert.ok([].concat(config.path).includes("/share.html"));
+  assert.ok([].concat(config.path).includes("/r/*"));
 });
 
 test("a shared recipe gets its own title, description and photo", async () => {
@@ -57,6 +58,12 @@ test("the sender line follows the recipe's language", async () => {
   answer.body = { recipe: { title: "Борщ", description: "Свекольный суп." }, photoUrl: null, sharedBy: "Дима" };
   const { html } = await run(`https://storecipe.netlify.app/share.html?token=${TOKEN}`);
   assert.match(html, /og:description" content="Дима делится с вами рецептом\. Свекольный суп\."/);
+});
+
+test("short links (/r/<code>) get the preview too", async () => {
+  const { html } = await run(`https://storecipe.netlify.app/r/AbC-12_xyzAbC-12`);
+  assert.equal(calls[0].body.token, "AbC-12_xyzAbC-12");
+  assert.match(html, /og:url" content="https:\/\/storecipe\.netlify\.app\/r\/AbC-12_xyzAbC-12"/);
 });
 
 test("without a description or photo: first ingredients and the app icon", async () => {

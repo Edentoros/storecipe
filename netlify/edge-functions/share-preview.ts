@@ -75,7 +75,9 @@ export function previewTags(shared: Shared, pageUrl: string, origin: string): { 
 
 export default async (request: Request, context: Context) => {
   const response = await context.next();
-  const token = new URL(request.url).searchParams.get("token") || "";
+  const requestUrl = new URL(request.url);
+  const token =
+    requestUrl.searchParams.get("token") || (requestUrl.pathname.match(/^\/r\/([A-Za-z0-9_-]+)\/?$/) || [])[1] || "";
   const type = response.headers.get("content-type") || "";
   if (!TOKEN_RE.test(token) || !response.ok || !type.includes("text/html")) return response;
 
@@ -100,4 +102,4 @@ export default async (request: Request, context: Context) => {
   }
 };
 
-export const config = { path: ["/share.html", "/share"] };
+export const config = { path: ["/share.html", "/share", "/r/*"] };

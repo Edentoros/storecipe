@@ -727,10 +727,15 @@ function createSupabaseServices({ config, state, helpers }) {
     }
   }
 
+  function randomShareToken() {
+    const bytes = crypto.getRandomValues(new Uint8Array(12));
+    return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_");
+  }
+
   async function toggleRecipePublicViaRest(recipeId, userId, makePublic) {
     const accessToken = getAccessToken();
-    // 128 random bits: share links can't be guessed.
-    const shareToken = makePublic ? crypto.randomUUID().replace(/-/g, "") : null;
+    // 16 URL-safe characters (96 random bits): short, and can't be guessed.
+    const shareToken = makePublic ? randomShareToken() : null;
     const query = new URLSearchParams({
       id: `eq.${recipeId}`,
       user_id: `eq.${userId}`

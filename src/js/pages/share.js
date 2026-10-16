@@ -47,7 +47,11 @@
 
   const container = document.getElementById("sharedContent");
   const cta = document.getElementById("sharedCta");
-  const token = new URLSearchParams(window.location.search).get("token") || "";
+  // Short links are /r/<token>; older ones share.html?token=<token>.
+  const token =
+    new URLSearchParams(window.location.search).get("token") ||
+    (window.location.pathname.match(/\/r\/([A-Za-z0-9_-]+)\/?$/) || [])[1] ||
+    "";
 
   function showMessage(title, body) {
     container.innerHTML = `

@@ -1,4 +1,4 @@
-// shared-recipe: the recipe behind a share link (share.html?token=…), and
+// shared-recipe: the recipe behind a share link (/r/<token>, or share.html?token=…), and
 // "Save to my recipes" for whoever opens it.
 //
 // - { token }: anyone with the link. Returns only that recipe's own fields
@@ -8,7 +8,7 @@
 //   photo into their own folder, into their recipes. Saving the same recipe
 //   again returns the copy they already have; the owner gets their own recipe.
 //
-// Lookups need the exact token (128 random bits) and is_public = true, so links
+// Lookups need the exact token (at least 96 random bits) and is_public = true, so links
 // can't be guessed or listed. Runs with the service role key because signed-out
 // visitors have no access to the recipes table (see sql/sharing.sql).
 
