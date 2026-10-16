@@ -2703,13 +2703,23 @@
     }
   }
 
-  async function copyShareLink(recipe) {
+  // "Dima sent you a recipe on Storecipe: Chilli con carne" (without a name:
+  // "Chilli con carne on Storecipe"). The link goes on its own line.
+  function shareMessageText(recipe) {
+    const title = recipe.title || "";
+    const name = state.myDisplayName;
+    return name ? t("share.textFrom", { name, title }) : t("share.text", { title });
+  }
+
+  // Copies the message and the link, ready to paste into a chat.
+  async function copyShareMessage(recipe) {
+    const url = shareUrlFor(recipe.share_token);
     try {
-      await navigator.clipboard.writeText(shareUrlFor(recipe.share_token));
-      showToast(t("share.copied"), "success", 5000);
+      await navigator.clipboard.writeText(`${shareMessageText(recipe)}\n${url}`);
+      showToast(t("share.messageCopied"), "success", 5000);
     } catch (_error) {
       // No clipboard access: show the link so it can be copied by hand.
-      window.prompt(t("share.copyPrompt"), shareUrlFor(recipe.share_token));
+      window.prompt(t("share.copyPrompt"), url);
     }
   }
 
@@ -2720,26 +2730,17 @@
       if (!(await setRecipeShared(recipe, true))) return;
       showDetail(recipe, { scrollToDetail: false });
     }
-    const url = shareUrlFor(recipe.share_token);
-    const title = recipe.title || "";
-    const name = state.myDisplayName;
-    const text = name ? t("share.textFrom", { name, title }) : t("share.text", { title });
-    // Phones: the system share sheet (WhatsApp, Messages, Copy…). Elsewhere: copy.
+    // Phones: the system share sheet (WhatsApp, Messages, Copy…). Elsewhere:
+    // copy the message and link.
     const canShareSheet = typeof navigator.share === "function" && window.matchMedia("(pointer: coarse)").matches;
     if (canShareSheet) {
       try {
-        await navigator.share({ title, text, url });
+        await navigator.share({ title: recipe.title || "", text: shareMessageText(recipe), url: shareUrlFor(recipe.share_token) });
       } catch (error) {
-        if (error?.name !== "AbortError") await copyShareLink(recipe);
+        if (error?.name !== "AbortError") await copyShareMessage(recipe);
       }
     } else {
-      // Computers: copy the whole message, ready to paste into a chat.
-      try {
-        await navigator.clipboard.writeText(`${text}\n${url}`);
-        showToast(t("share.messageCopied"), "success", 5000);
-      } catch (_error) {
-        await copyShareLink(recipe);
-      }
+      await copyShareMessage(recipe);
     }
     nudgeForDisplayName();
   }
@@ -3502,7 +3503,10 @@
     const copyLinkButton = event.target.closest("button[data-action='copy-share-link']");
     if (copyLinkButton) {
       const recipe = state.recipes.find((item) => String(item.id) === String(copyLinkButton.dataset.id));
-      if (recipe?.share_token) await copyShareLink(recipe);
+      if (recipe?.share_token) {
+        await copyShareMessage(recipe);
+        nudgeForDisplayName();
+      }
       return;
     }
     const stopSharingButton = event.target.closest("button[data-action='stop-sharing']");
