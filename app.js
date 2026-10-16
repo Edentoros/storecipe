@@ -1827,6 +1827,14 @@
     return raw.length >= 20 && /\s/.test(raw);
   }
 
+  // Error codes for a text or photo import (or Tidy up). An import service
+  // that only knows links answers "invalid_url": it hasn't been updated yet.
+  function textOrPhotoErrorCode(code, kind) {
+    if (code === "invalid_url") return "ai_unavailable";
+    if (code === "not_recipe") return `not_recipe_${kind}`;
+    return code;
+  }
+
   // What to retry if the last import failed.
   let lastImportRequest = {};
 
@@ -1908,7 +1916,7 @@
       }
     } catch (error) {
       showImportQuota(error);
-      const code = error?.code === "not_recipe" && kind !== "url" ? `not_recipe_${kind}` : error?.code;
+      const code = kind === "url" ? error?.code : textOrPhotoErrorCode(error?.code, kind);
       importNotice?.showError({ code, site, message: error?.message });
     } finally {
       state.isImportingRecipe = false;
@@ -2035,7 +2043,11 @@
       });
     } catch (error) {
       showImportQuota(error);
-      const code = error?.code === "not_recipe" ? "not_recipe_text" : error?.code;
+      const code = textOrPhotoErrorCode(error?.code, "text");
+      if (code === "ai_unavailable") {
+        showToast(t("tidy.unavailable"), "info", 8000);
+        return;
+      }
       const key = t(`import.notice.${code}.title`) !== `import.notice.${code}.title` ? code : "server_error";
       showToast(`${t(`import.notice.${key}.title`)}. ${t(`import.notice.${key}.body`, { site: "", error: "" })}`, "info", 8000);
     } finally {
