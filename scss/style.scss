@@ -4280,3 +4280,23 @@ body.theme-dark .shared-page a.button.button--secondary {
   color: #d9e2ec;
   box-shadow: inset 0 0 0 1px #2f4a63;
 }
+
+// "Your name" in Settings: only when signed in.
+.settings-field--name {
+  display: none;
+}
+.panel--auth-modal .settings-field--name {
+  display: block;
+}
+.settings-name-row {
+  display: flex;
+  gap: 0.5rem;
+}
+.settings-name-row input {
+  flex: 1;
+  min-width: 0;
+}
+.settings-name-row .button {
+  flex-shrink: 0;
+  margin: 0;
+}

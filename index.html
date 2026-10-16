@@ -80,6 +80,18 @@
         </div>
         <p id="authStatus" class="auth-status" data-i18n="auth.signInPrompt">Sign into your account or create new account.</p>
         <form id="authForm">
+          <label for="authName" class="hidden" data-i18n="auth.name">Your name</label>
+          <input
+            id="authName"
+            name="name"
+            type="text"
+            autocomplete="given-name"
+            maxlength="40"
+            class="hidden"
+            data-i18n-placeholder="auth.namePlaceholder"
+            placeholder="Shown when you share recipes"
+          />
+
           <label for="authEmail" data-i18n="auth.email">Email</label>
           <input id="authEmail" name="email" type="email" autocomplete="email" required />
 
@@ -126,6 +138,14 @@
         </div>
 
         <div class="settings-prefs">
+          <div class="settings-field settings-field--name">
+            <label for="settingsName" class="settings-field__label" data-i18n="settings.name">Your name</label>
+            <div class="settings-name-row">
+              <input id="settingsName" type="text" maxlength="40" autocomplete="given-name" data-i18n-placeholder="auth.namePlaceholder" placeholder="Shown when you share recipes" />
+              <button id="saveSettingsName" type="button" class="button button--secondary" data-i18n="settings.saveName">Save</button>
+            </div>
+            <p class="settings-field__hint" data-i18n="settings.nameHint">Friends see it when you share a recipe.</p>
+          </div>
           <div class="settings-field">
             <span id="languageLabel" class="settings-field__label" data-i18n="language.label">Language</span>
             <div id="languageOptions" class="segmented" role="radiogroup" aria-labelledby="languageLabel">

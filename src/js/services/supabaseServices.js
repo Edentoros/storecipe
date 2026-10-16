@@ -514,6 +514,38 @@ function createSupabaseServices({ config, state, helpers }) {
     return callRecipeImportFunction({ image, language });
   }
 
+  // Your display name. The profile row normally exists (created at sign-up);
+  // if it doesn't, it's created here.
+  async function updateMyDisplayNameViaRest(userId, email, displayName) {
+    const accessToken = getAccessToken();
+    const headers = {
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation"
+    };
+    const value = displayName || null;
+    const query = new URLSearchParams({ id: `eq.${userId}` });
+    let response = await debugFetch(`${SUPABASE_URL}/rest/v1/profiles?${query}`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ display_name: value })
+    });
+    let data = await parseResponse(response, []);
+    if (response.ok && Array.isArray(data) && data.length === 0) {
+      response = await debugFetch(`${SUPABASE_URL}/rest/v1/profiles`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ id: userId, email, display_name: value })
+      });
+      data = await parseResponse(response, []);
+    }
+    if (!response.ok) {
+      throw new Error(data?.message || `Saving your name failed with status ${response.status}`);
+    }
+    return Array.isArray(data) ? data[0] : data;
+  }
+
   // "Save to my recipes" for a recipe shared by link (shared-recipe function).
   async function saveSharedRecipeViaFunction(token) {
     let accessToken;
@@ -773,6 +805,7 @@ function createSupabaseServices({ config, state, helpers }) {
     importRecipeFromTextViaFunction,
     importRecipeFromImageViaFunction,
     saveSharedRecipeViaFunction,
+    updateMyDisplayNameViaRest,
     fetchImportQuotaViaFunction,
     uploadImage,
     fetchExternalImageAsFile,

@@ -37,6 +37,7 @@
       hasSourceUrlColumn: true,
       // Friends
       myProfile: null,
+      myDisplayName: "",
       friends: [],
       friendRecipes: [],
       isFriendsAvailable: true,

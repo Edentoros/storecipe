@@ -320,6 +320,7 @@
     importRecipeFromTextViaFunction,
     importRecipeFromImageViaFunction,
     saveSharedRecipeViaFunction,
+    updateMyDisplayNameViaRest,
     fetchImportQuotaViaFunction,
     uploadImage,
     fetchExternalImageAsFile,
@@ -1172,6 +1173,7 @@
       // An empty account gets the welcome card in the list, not a pop-up.
       void hydrateImagesInBackground(state.recipes);
       void savePendingSharedRecipe();
+      void loadMyDisplayName();
     } finally {
       endRecipeListLoad();
     }
@@ -1762,6 +1764,12 @@
 
   function setSignUpMode(enabled) {
     isSignUpMode = enabled;
+    const authName = document.getElementById("authName");
+    if (authName) {
+      authName.classList.toggle("hidden", !enabled);
+      authName.required = enabled;
+      document.querySelector("label[for='authName']")?.classList.toggle("hidden", !enabled);
+    }
     if (authConfirmPassword) {
       authConfirmPassword.classList.toggle("hidden", !enabled);
       authConfirmPassword.required = enabled;
@@ -1778,7 +1786,7 @@
       signInButton.classList.toggle("hidden", enabled);
     }
     if (signUpButton) {
-      signUpButton.textContent = enabled ? "Create Account" : "Sign Up";
+      signUpButton.textContent = enabled ? t("auth.createAccount") : t("auth.signUp");
     }
     if (authPassword) {
       authPassword.autocomplete = enabled ? "new-password" : "current-password";
@@ -1788,7 +1796,7 @@
     }
   }
 
-  async function signUp(email, password) {
+  async function signUp(email, password, name) {
     const captcha = takeCaptchaToken();
     if (captcha === null) return;
     setAuthLoading(true, t("auth.signingUp"));
@@ -1797,7 +1805,9 @@
       const { error } = await client.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${siteUrl}/confirm.html`, captchaToken: captcha }
+        // The display name is copied into the profile by the sign-up trigger
+        // (sql/display-names.sql).
+        options: { emailRedirectTo: `${siteUrl}/confirm.html`, captchaToken: captcha, data: name ? { display_name: name } : {} }
       });
       if (error) {
         setAuthStatus(t("auth.signUpFailedShort", { error: error.message }), { isError: true });
@@ -2143,7 +2153,7 @@
       return;
     }
 
-    await signUp(email, password);
+    await signUp(email, password, cleanDisplayName(document.getElementById("authName")?.value));
   });
 
   if (authPassword) {
@@ -2686,17 +2696,78 @@
       showDetail(recipe, { scrollToDetail: false });
     }
     const url = shareUrlFor(recipe.share_token);
+    const title = recipe.title || "";
+    const name = state.myDisplayName;
+    const text = name ? t("share.textFrom", { name, title }) : t("share.text", { title });
     // Phones: the system share sheet (WhatsApp, Messages, Copy…). Elsewhere: copy.
     const canShareSheet = typeof navigator.share === "function" && window.matchMedia("(pointer: coarse)").matches;
     if (canShareSheet) {
       try {
-        await navigator.share({ title: recipe.title || "", text: t("share.text", { title: recipe.title || "" }), url });
+        await navigator.share({ title, text, url });
       } catch (error) {
         if (error?.name !== "AbortError") await copyShareLink(recipe);
       }
-      return;
+    } else {
+      await copyShareLink(recipe);
     }
-    await copyShareLink(recipe);
+    nudgeForDisplayName();
+  }
+
+  // ── Your name (profiles.display_name) ──────────────────────────────────────
+  // Shown on recipes you share ("Shared by Dima") and in the share message.
+  function cleanDisplayName(value) {
+    return String(value || "").replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim().slice(0, 40);
+  }
+
+  async function loadMyDisplayName() {
+    if (!state.currentUser || !hasSupabaseConfig) return;
+    try {
+      const profile = await fetchMyProfileViaRest(state.currentUser.id);
+      state.myDisplayName = cleanDisplayName(profile?.display_name);
+    } catch (_error) {
+      // No profiles table yet (sql/friends-migration.sql): no name to show.
+      state.myDisplayName = "";
+    }
+    const field = document.getElementById("settingsName");
+    if (field && document.activeElement !== field) field.value = state.myDisplayName || "";
+  }
+
+  async function saveMyDisplayName() {
+    const field = document.getElementById("settingsName");
+    if (!field || !state.currentUser) return;
+    const name = cleanDisplayName(field.value);
+    field.value = name;
+    try {
+      await updateMyDisplayNameViaRest(state.currentUser.id, state.currentUser.email, name);
+      state.myDisplayName = name;
+      showToast(t(name ? "settings.nameSaved" : "settings.nameCleared"), "success", 4000);
+    } catch (error) {
+      logSupabaseError("save display name", error);
+      showToast(t("settings.nameFailed"), "info", 6000);
+    }
+  }
+
+  document.getElementById("saveSettingsName")?.addEventListener("click", () => void saveMyDisplayName());
+  document.getElementById("settingsName")?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    void saveMyDisplayName();
+  });
+
+  // Sharing without a name: suggest adding one, once per visit.
+  let hasNudgedForName = false;
+  function nudgeForDisplayName() {
+    if (state.myDisplayName || hasNudgedForName) return;
+    hasNudgedForName = true;
+    window.setTimeout(() => {
+      showToast(t("share.addNameNudge"), "info", 9000, {
+        actionLabel: t("share.addName"),
+        onAction: () => {
+          setSettingsOpen(true);
+          window.setTimeout(() => document.getElementById("settingsName")?.focus(), 400);
+        }
+      });
+    }, 1200);
   }
 
   async function stopSharingRecipe(recipeId) {
