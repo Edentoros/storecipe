@@ -46,6 +46,24 @@
     }
 
     const ANONYMOUS_THEME_KEY = `${THEME_LOCAL_KEY_PREFIX}anonymous`;
+    // The theme last shown on this device, whoever was signed in. Used while
+    // the app starts (before it knows who is signed in) and when signed out,
+    // so a dark-theme user never sees the light default flash up. bootTheme.js
+    // reads it too.
+    const DEVICE_THEME_KEY = `${THEME_LOCAL_KEY_PREFIX}device`;
+    function readDeviceTheme() {
+      try {
+        const remembered = window.localStorage.getItem(DEVICE_THEME_KEY);
+        if (remembered) return remembered;
+        // Before this was remembered: any signed-in user's choice on this device.
+        const userKey = Object.keys(window.localStorage).find(
+          (key) => key.startsWith(THEME_LOCAL_KEY_PREFIX) && key !== ANONYMOUS_THEME_KEY && key !== DEVICE_THEME_KEY
+        );
+        return userKey ? window.localStorage.getItem(userKey) : null;
+      } catch (_error) {
+        return null;
+      }
+    }
 
     function applySunsetCheck() {
       const shouldBeDark = isSunsetDark();
@@ -83,6 +101,11 @@
       updateThemeToggleUi();
       // The real theme is on: drop the early dark paint (bootTheme.js).
       document.documentElement.classList.remove("theme-dark-boot");
+      try {
+        window.localStorage.setItem(DEVICE_THEME_KEY, normalizedTheme);
+      } catch (_error) {
+        /* not remembered; the default is used next time */
+      }
 
       if (persistForCurrentUser) {
         const key = state.currentUser?.id
@@ -105,14 +128,14 @@
 
     async function loadThemePreference() {
       if (!state.currentUser) {
-        const anonTheme = window.localStorage.getItem(ANONYMOUS_THEME_KEY);
+        const anonTheme = window.localStorage.getItem(ANONYMOUS_THEME_KEY) || readDeviceTheme();
         setTheme(anonTheme ? normalizeTheme(anonTheme) : DEFAULT_THEME, { persistForCurrentUser: false });
         return;
       }
 
       const userLocalTheme = window.localStorage.getItem(getThemeStorageKey(state.currentUser.id));
       const anonTheme = window.localStorage.getItem(ANONYMOUS_THEME_KEY);
-      const localTheme = normalizeTheme(userLocalTheme || anonTheme);
+      const localTheme = normalizeTheme(userLocalTheme || readDeviceTheme() || anonTheme);
       setTheme(localTheme, { persistForCurrentUser: false });
 
       if (!hasSupabaseConfig || !state.isThemePreferenceAvailable) {

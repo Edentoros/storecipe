@@ -3646,7 +3646,8 @@
         if ("caches" in window) void caches.delete("storecipe-photos-v1").catch(() => {});
         state.isSettingsOpen = false;
         resetRecipeFormState();
-        setTheme(DEFAULT_THEME, { persistForCurrentUser: false });
+        // Keep the theme this device was using (not the light default).
+        await loadThemePreference();
         setLanguage(DEFAULT_LANGUAGE, { persistForCurrentUser: false });
         mealPlannerWeekOffset = 0;
         state.shoppingListRecipeIds = [];

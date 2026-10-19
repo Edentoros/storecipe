@@ -5,12 +5,16 @@
 (function () {
   var dark = true;
   try {
-    var keys = Object.keys(window.localStorage).filter(function (key) {
-      return key.indexOf("storecipe_theme_") === 0;
-    });
-    // A signed-in user's choice beats the signed-out one.
-    var key = keys.filter(function (k) { return !/anonymous$/.test(k); })[0] || keys[0];
-    var theme = key ? window.localStorage.getItem(key) : null;
+    // The theme this device last showed (see themeManager.js); older installs
+    // only have per-user keys, where a signed-in user's choice wins.
+    var theme = window.localStorage.getItem("storecipe_theme_device");
+    if (!theme) {
+      var keys = Object.keys(window.localStorage).filter(function (key) {
+        return key.indexOf("storecipe_theme_") === 0;
+      });
+      var key = keys.filter(function (k) { return !/anonymous$/.test(k); })[0] || keys[0];
+      theme = key ? window.localStorage.getItem(key) : null;
+    }
     var hour = new Date().getHours();
     if (theme === "light") dark = false;
     else if (theme === "sunset") dark = hour >= 19 || hour < 7;

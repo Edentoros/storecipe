@@ -15,8 +15,8 @@
   function storedPreference(prefix) {
     try {
       const keys = Object.keys(window.localStorage).filter((key) => key.startsWith(prefix));
-      // A signed-in user's choice beats the signed-out one.
-      const key = keys.find((k) => !k.endsWith("anonymous")) || keys[0];
+      // This device's last choice first, then a signed-in user's, then signed-out.
+      const key = keys.find((k) => k.endsWith("device")) || keys.find((k) => !k.endsWith("anonymous")) || keys[0];
       return key ? window.localStorage.getItem(key) : null;
     } catch (_error) {
       return null;
