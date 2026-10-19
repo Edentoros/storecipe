@@ -3,9 +3,9 @@
 --
 -- Run in the Supabase SQL editor. Idempotent — safe to run more than once.
 --
--- A shared recipe has is_public = true and a long random share_token; the link
--- is share.html?token=<share_token>. Owners turn sharing on and off through
--- their existing "update own recipes" policy.
+-- A shared recipe has is_public = true and a random share_token; the link is
+-- /r/<share_token> (or share.html?token=…). share-everything.sql then makes
+-- every recipe shared by default.
 --
 -- There is deliberately NO policy letting signed-out visitors read recipes:
 -- with one, anyone could list every shared recipe (is_public=eq.true) without

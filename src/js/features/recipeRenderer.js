@@ -384,14 +384,6 @@ function createRecipeRenderer({
               : ""}
           </div>
           <p class="recipe-detail-card__date">${escapeHtml(dateLine)} ${categoryHtml}${sourceHtml}</p>
-          ${isOwner && recipe.is_public && recipe.share_token
-            ? `<p class="share-status">
-                <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>
-                <span>${escapeHtml(t("share.status"))}</span>
-                <button type="button" class="share-status__action" data-action="copy-share-link" data-id="${recipe.id}">${escapeHtml(t("share.copyLink"))}</button>
-                <button type="button" class="share-status__action" data-action="stop-sharing" data-id="${recipe.id}">${escapeHtml(t("share.stop"))}</button>
-              </p>`
-            : ""}
           ${recipe.description
             ? (isOwner
                 ? `<button class="inline-edit-trigger recipe-detail-card__description" data-action="inline-edit-field" data-field="description" data-field-content="description" type="button" aria-label="${escapeHtml(t("detail.editDescription"))}">${escapeHtml(recipe.description).replace(/\n/g, "<br />")}</button>`

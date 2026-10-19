@@ -2672,19 +2672,19 @@
   }
 
   // ── Sharing by link ────────────────────────────────────────────────────────
-  // The first Share creates the link (is_public + a random token); after that
-  // Share just shares it. Stop sharing removes the token, so the old link dies.
+  // Every recipe can be shared: it gets a link code when it's created
+  // (sql/share-everything.sql). Recipes from before that get one on first Share.
   function shareUrlFor(token) {
     return `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, "")}r/${encodeURIComponent(token)}`;
   }
 
-  async function setRecipeShared(recipe, makePublic) {
+  async function ensureShareLink(recipe) {
     if (!hasSupabaseConfig || !state.currentUser) {
       showToast(t("status.sharingRequiresAuth"), "info", 5000);
       return false;
     }
     try {
-      const data = await toggleRecipePublicViaRest(recipe.id, state.currentUser.id, makePublic);
+      const data = await toggleRecipePublicViaRest(recipe.id, state.currentUser.id, true);
       const updated = Array.isArray(data) ? data[0] : data;
       if (!updated) throw new Error("Share update returned no recipe.");
       recipe.is_public = updated.is_public;
@@ -2726,10 +2726,7 @@
   async function shareRecipe(recipeId) {
     const recipe = state.recipes.find((item) => String(item.id) === String(recipeId));
     if (!recipe) return;
-    if (!recipe.is_public || !recipe.share_token) {
-      if (!(await setRecipeShared(recipe, true))) return;
-      showDetail(recipe, { scrollToDetail: false });
-    }
+    if ((!recipe.is_public || !recipe.share_token) && !(await ensureShareLink(recipe))) return;
     // Phones: the system share sheet (WhatsApp, Messages, Copy…). Elsewhere:
     // copy the message and link.
     const canShareSheet = typeof navigator.share === "function" && window.matchMedia("(pointer: coarse)").matches;
@@ -2800,15 +2797,6 @@
         }
       });
     }, 1200);
-  }
-
-  async function stopSharingRecipe(recipeId) {
-    const recipe = state.recipes.find((item) => String(item.id) === String(recipeId));
-    if (!recipe) return;
-    if (await setRecipeShared(recipe, false)) {
-      showToast(t("share.stopped"), "info", 6000);
-      showDetail(recipe, { scrollToDetail: false });
-    }
   }
 
   // Saves the shared recipe the visitor came from (see PENDING_SHARED_SAVE_KEY).
@@ -3498,20 +3486,6 @@
     const shareButton = event.target.closest("button[data-action='share']");
     if (shareButton) {
       if (shareButton.dataset.id) await shareRecipe(shareButton.dataset.id);
-      return;
-    }
-    const copyLinkButton = event.target.closest("button[data-action='copy-share-link']");
-    if (copyLinkButton) {
-      const recipe = state.recipes.find((item) => String(item.id) === String(copyLinkButton.dataset.id));
-      if (recipe?.share_token) {
-        await copyShareMessage(recipe);
-        nudgeForDisplayName();
-      }
-      return;
-    }
-    const stopSharingButton = event.target.closest("button[data-action='stop-sharing']");
-    if (stopSharingButton) {
-      if (stopSharingButton.dataset.id) await stopSharingRecipe(stopSharingButton.dataset.id);
       return;
     }
 
