@@ -21,7 +21,7 @@
     invalid_text: "warning",
     invalid_image: "warning"
   };
-  const RETRYABLE = new Set(["fetch_failed", "ai_failed", "service_unreachable", "server_error"]);
+  const RETRYABLE = new Set(["fetch_failed", "ai_failed", "ai_failed_text", "service_unreachable", "server_error"]);
   const NO_NEW_LINK = new Set([
     "quota_exceeded", "unauthenticated", "ai_unavailable", "quota_unavailable", "not_deployed", "busy",
     "not_recipe_photo", "invalid_image"

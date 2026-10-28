@@ -1879,6 +1879,8 @@
   function textOrPhotoErrorCode(code, kind) {
     if (code === "invalid_url") return "ai_unavailable";
     if (code === "not_recipe") return `not_recipe_${kind}`;
+    // The link wording ("had a problem reading {site}") doesn't fit here.
+    if (code === "ai_failed") return "ai_failed_text";
     return code;
   }
 

@@ -292,19 +292,28 @@ async function extractWithAi(kind: SourceKind, userContent: UserContent, languag
         { role: "user", content: userContent }
       ]
     })
-  }).catch(() => {
+  }).catch((error) => {
+    console.error(`recipe-import: OpenAI ${error?.name === "TimeoutError" ? `timed out after ${OPENAI_TIMEOUT_MS / 1000}s` : "unreachable"}`, kind, String(error));
     throw new ImportError("ai_failed", 502, "The AI service didn't respond. Please try again.");
   });
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    console.error("recipe-import: OpenAI error", response.status, data?.error?.message);
-    throw new ImportError("ai_failed", 502, "The AI service couldn't process this page. Please try again.");
+    // 429 with code insufficient_quota: out of credit or over the spending limit.
+    console.error("recipe-import: OpenAI error", response.status, data?.error?.code, data?.error?.type, data?.error?.message);
+    throw new ImportError("ai_failed", 502, "The AI service couldn't process this. Please try again.");
   }
-  const content = data?.choices?.[0]?.message?.content;
+  const choice = data?.choices?.[0];
+  const content = choice?.message?.content;
   try {
     return JSON.parse(String(content)) as Record<string, unknown>;
   } catch (_error) {
+    console.error(
+      "recipe-import: unreadable AI answer", kind,
+      "finish_reason:", choice?.finish_reason,
+      "refusal:", choice?.message?.refusal ?? null,
+      "length:", String(content ?? "").length
+    );
     throw new ImportError("ai_failed", 502, "The AI returned an unreadable answer. Please try again.");
   }
 }
