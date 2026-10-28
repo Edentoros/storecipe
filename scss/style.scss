@@ -4485,6 +4485,20 @@ body.is-cooking {
   text-decoration-thickness: 2px;
   text-underline-offset: 6px;
 }
+// Amounts in the step, scaled to the servings chosen.
+.cooking-mode__amount {
+  font-weight: inherit;
+  color: #fff;
+  border-bottom: 2px dotted #9fb3c8;
+}
+.cooking-mode__step + .cooking-mode__scaled-note {
+  margin-top: -12px;
+}
+.cooking-mode__scaled-note {
+  margin-bottom: 0;
+  font-size: 14px;
+  color: #9fb3c8;
+}
 .cooking-mode__offers {
   display: flex;
   flex-wrap: wrap;
@@ -4597,10 +4611,23 @@ body.is-cooking {
   font-size: 22px;
   color: #e4edf6;
 }
-.cooking-sheet__head p {
-  margin: 2px 0 0;
-  font-size: 14px;
-  color: #9fb3c8;
+.cooking-sheet__servings {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cooking-sheet__servings .cooking-mode__round {
+  font-size: 22px;
+}
+.cooking-sheet__servings .cooking-mode__round:disabled {
+  opacity: 0.4;
+}
+.cooking-sheet__servings-value {
+  min-width: 9rem;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  color: #c9d6e3;
 }
 .cooking-sheet__list {
   overflow-y: auto;

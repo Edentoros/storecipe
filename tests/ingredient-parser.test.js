@@ -161,3 +161,23 @@ describe("decimalToFraction", () => {
     assert.equal(P.decimalToFraction(2), "2");
   });
 });
+
+describe("scaleAmountsInText", () => {
+  const scaled = (text, ratio) =>
+    P.scaleAmountsInText(text, ratio).map((piece) => (piece.scaled ? `[${piece.text}]` : piece.text)).join("");
+
+  it("scales weights, volumes and spoons in a method step", () => {
+    assert.equal(scaled("Add 500 g of the mince and 2 tbsp oil.", 2), "Add [1 kg] of the mince and [4 tbsp] oil.");
+    assert.equal(scaled("Pour in 400ml stock and 1 1/2 cups water", 2), "Pour in [800ml] stock and [3 cups] water");
+    assert.equal(scaled("Добавьте 1,5 кг картошки и 2 ст. л. масла", 0.5), "Добавьте [750 г] картошки и [1 ст. л.] масла");
+  });
+
+  it("leaves times, temperatures and plain numbers alone", () => {
+    const text = "Cut into 4 pieces, add 2 eggs and bake for 8–10 minutes at 180°C, gas mark 6.";
+    assert.equal(scaled(text, 2), text);
+  });
+
+  it("changes nothing at the original servings", () => {
+    assert.equal(scaled("Add 500 g mince", 1), "Add 500 g mince");
+  });
+});

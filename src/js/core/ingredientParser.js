@@ -234,6 +234,29 @@
       .map((line) => scaleIngredientLine(line, ratio));
   }
 
+  // Amounts inside a sentence ("add 500 g of the mince and 2 tbsp oil") scaled
+  // by `ratio`, for the method. Only amounts with a weight, volume or spoon
+  // unit change: a bare number ("cut into 4", "180°C", "gas mark 6") or a time
+  // is left alone. Returns the text in pieces: [{ text, scaled }].
+  function scaleAmountsInText(text, ratio) {
+    const source = String(text ?? "");
+    if (ratio === 1 || !source) return [{ text: source, scaled: false }];
+    const pieces = [];
+    let at = 0;
+    const starts = new RegExp(`(?<![\\p{L}\\d.,/${FRACTION_CHARS}])[\\d${FRACTION_CHARS}]`, "gu");
+    for (const match of source.matchAll(starts)) {
+      if (match.index < at) continue;
+      const amount = readAmount(source.slice(match.index));
+      if (!amount || !amount.unit || amount.unit.kind === "count") continue;
+      const length = source.length - match.index - amount.rest.length;
+      if (match.index > at) pieces.push({ text: source.slice(at, match.index), scaled: false });
+      pieces.push({ text: scaleAmount({ ...amount, rest: "" }, ratio), scaled: true });
+      at = match.index + length;
+    }
+    if (at < source.length) pieces.push({ text: source.slice(at), scaled: false });
+    return pieces;
+  }
+
   function scaleIngredients(ingredientsText, originalServes, newServes) {
     return scaleIngredientList(ingredientsText, originalServes, newServes).map((l) => l.text).join("\n");
   }
@@ -277,6 +300,7 @@
     scaleIngredientLine,
     scaleIngredientList,
     scaleIngredients,
+    scaleAmountsInText,
     splitIngredientsLine
   };
 })();

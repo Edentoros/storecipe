@@ -1,16 +1,13 @@
 // Cooking mode: a full-screen, one-step-at-a-time view of a recipe's method,
 // with timers for the times mentioned in a step, the ingredients a tap away,
-// and the screen kept on. Progress (step, timers, ticked ingredients) is kept
-// per recipe on this device, so an accidental exit or reload can continue.
+// and the screen kept on. Leaving it (Exit, Back, Finish) resets everything:
+// the next time starts at step 1, and no timer is left running anywhere.
 (() => {
-  const PROGRESS_PREFIX = "storecipe_cooking_";
-  // Progress older than this is ignored ("Start cooking" again).
-  const PROGRESS_MAX_AGE_MS = 12 * 60 * 60 * 1000;
   const SWIPE_MIN_PX = 60;
 
-  function createCookingMode({ container, i18n, helpers, onOpenChange }) {
+  function createCookingMode({ container, i18n, helpers, onOpenChange, onServingsChange }) {
     const t = i18n ? (key, params) => i18n.t(key, params) : (key) => key;
-    const { escapeHtml, scaleIngredientList } = helpers;
+    const { escapeHtml, scaleIngredientList, scaleAmountsInText, nextServings } = helpers;
     const { splitSteps, findTimes } = window.StorecipeCookingSteps;
 
     let recipe = null;
@@ -27,46 +24,13 @@
     let alarmId = null;
     let nextTimerId = 1;
 
-    // ── Progress on this device ─────────────────────────────────────────────
-
-    function progressKey(recipeId) {
-      return `${PROGRESS_PREFIX}${recipeId}`;
-    }
-
-    function readProgress(recipeId) {
-      try {
-        const saved = JSON.parse(window.localStorage.getItem(progressKey(recipeId)) || "null");
-        if (!saved || Date.now() - (saved.at || 0) > PROGRESS_MAX_AGE_MS) return null;
-        return saved;
-      } catch (_error) {
-        return null;
-      }
-    }
-
-    function saveProgress() {
-      if (!recipe) return;
-      try {
-        window.localStorage.setItem(
-          progressKey(recipe.id),
-          JSON.stringify({ step: stepIndex, timers, checked: [...checked], at: Date.now() })
-        );
-      } catch (_error) {
-        /* not remembered: starts from the top next time */
-      }
-    }
-
-    function clearProgress(recipeId) {
-      try {
-        window.localStorage.removeItem(progressKey(recipeId));
-      } catch (_error) {
-        /* nothing to clear */
-      }
-    }
-
-    // The step to continue at (1-based), or 0 to start from the top.
-    function savedStep(recipeId) {
-      const saved = readProgress(recipeId);
-      return saved && saved.step > 0 ? saved.step + 1 : 0;
+    // An earlier version kept progress per recipe on the device; drop it.
+    try {
+      Object.keys(window.localStorage)
+        .filter((key) => key.startsWith("storecipe_cooking_"))
+        .forEach((key) => window.localStorage.removeItem(key));
+    } catch (_error) {
+      /* nothing stored */
     }
 
     // ── Formatting ──────────────────────────────────────────────────────────
@@ -92,16 +56,27 @@
       return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
     }
 
-    // The step's text with each time highlighted.
-    function stepHtml(text, times) {
+    function servingsRatio() {
+      return originalServes > 0 && serves > 0 ? serves / originalServes : 1;
+    }
+
+    // Text with each time highlighted.
+    function timesHtml(text) {
       let html = "";
       let at = 0;
-      for (const time of times) {
+      for (const time of findTimes(text)) {
         html += escapeHtml(text.slice(at, time.start));
         html += `<mark class="cooking-mode__time">${escapeHtml(text.slice(time.start, time.end))}</mark>`;
         at = time.end;
       }
       return html + escapeHtml(text.slice(at));
+    }
+
+    // The step's text: amounts scaled to the servings chosen, times highlighted.
+    function stepHtml(text) {
+      return scaleAmountsInText(text, servingsRatio())
+        .map((piece) => (piece.scaled ? `<strong class="cooking-mode__amount">${escapeHtml(piece.text)}</strong>` : timesHtml(piece.text)))
+        .join("");
     }
 
     // ── Timers ──────────────────────────────────────────────────────────────
@@ -113,7 +88,6 @@
     function startTimer(seconds, step) {
       unlockAudio();
       timers.push({ id: nextTimerId++, step, seconds, endAt: Date.now() + seconds * 1000, remaining: seconds, done: false });
-      saveProgress();
       ensureTicking();
       render();
     }
@@ -156,24 +130,20 @@
       } else {
         timer.endAt = Date.now() + timer.remaining * 1000;
       }
-      saveProgress();
       render();
     }
 
     function removeTimer(id) {
       timers = timers.filter((item) => item.id !== id);
-      if (ringing && ringing.id === id) {
-        ringing = null;
-        stopAlarm();
-        // Another timer may have finished meanwhile.
-        const next = timers.find((item) => item.done);
-        if (next) {
-          ringing = next;
-          startAlarm();
-        }
-      }
-      saveProgress();
+      if (ringing && ringing.id === id) ringNext();
       render();
+    }
+
+    // After an alert is answered: another timer may have finished meanwhile.
+    function ringNext() {
+      ringing = timers.find((item) => item.done) || null;
+      if (ringing) startAlarm();
+      else stopAlarm();
     }
 
     function snooze(id) {
@@ -182,9 +152,7 @@
       timer.done = false;
       timer.endAt = Date.now() + 60 * 1000;
       timer.seconds += 60;
-      ringing = null;
-      stopAlarm();
-      saveProgress();
+      ringNext();
       render();
     }
 
@@ -266,7 +234,7 @@
     }
 
     function ingredientsSheetHtml() {
-      const lines = scaleIngredientList(recipe.ingredients || "", originalServes || serves || 1, serves || originalServes || 1);
+      const lines = scaleIngredientList(recipe.ingredients || "", originalServes || 1, serves || originalServes || 1);
       const items = lines
         .map((line, index) => {
           const isHeading = line.text.endsWith(":") && line.text.length <= 60;
@@ -280,12 +248,16 @@
       return `<div class="cooking-sheet" role="dialog" aria-modal="true" aria-labelledby="cookingSheetTitle">
         <div class="cooking-sheet__panel">
           <div class="cooking-sheet__head">
-            <div>
-              <h2 id="cookingSheetTitle">${escapeHtml(t("detail.ingredients"))}</h2>
-              ${serves ? `<p>${escapeHtml(t("cook.forServings", { n: serves }))}</p>` : ""}
-            </div>
+            <h2 id="cookingSheetTitle">${escapeHtml(t("detail.ingredients"))}</h2>
             <button type="button" class="cooking-mode__pill" data-cook="close-sheet">${escapeHtml(t("cook.close"))}</button>
           </div>
+          ${originalServes
+            ? `<div class="cooking-sheet__servings">
+                <button type="button" class="cooking-mode__round" data-cook="servings-down" aria-label="${escapeHtml(t("detail.scaleDown"))}"${serves <= 2 ? " disabled" : ""}>&minus;</button>
+                <span class="cooking-sheet__servings-value" aria-live="polite">${escapeHtml(t("cook.forServings", { n: serves }))}</span>
+                <button type="button" class="cooking-mode__round" data-cook="servings-up" aria-label="${escapeHtml(t("detail.scaleUp"))}"${serves >= 98 ? " disabled" : ""}>&plus;</button>
+              </div>`
+            : ""}
           <div class="cooking-sheet__list">${items}</div>
         </div>
       </div>`;
@@ -310,6 +282,7 @@
       if (!recipe) return;
       const text = steps[stepIndex] || "";
       const times = findTimes(text);
+      const amountsScaled = scaleAmountsInText(text, servingsRatio()).some((piece) => piece.scaled);
       const last = stepIndex === steps.length - 1;
       const tips = last && recipe.notes ? String(recipe.notes).trim() : "";
       const offers = times
@@ -333,7 +306,8 @@
         <div class="cooking-mode__progress" style="grid-template-columns: repeat(${steps.length}, minmax(0, 1fr))" aria-hidden="true">${progress}</div>
         ${timers.length ? `<div class="cooking-mode__timers">${timerBarsHtml()}</div>` : ""}
         <div class="cooking-mode__body" data-cook-swipe>
-          <p class="cooking-mode__step" tabindex="-1" aria-live="polite">${stepHtml(text, times)}</p>
+          <p class="cooking-mode__step" tabindex="-1" aria-live="polite">${stepHtml(text)}</p>
+          ${amountsScaled ? `<p class="cooking-mode__scaled-note">${escapeHtml(t("cook.amountsFor", { n: serves }))}</p>` : ""}
           ${offers ? `<div class="cooking-mode__offers">${offers}</div>` : ""}
           ${tips
             ? `<div class="cooking-mode__tip"><p class="cooking-mode__tip-label">${escapeHtml(t("cook.tip"))}</p><p>${escapeHtml(tips).replace(/\n/g, "<br />")}</p></div>`
@@ -356,7 +330,6 @@
       const next = Math.max(0, Math.min(steps.length - 1, index));
       if (next === stepIndex) return;
       stepIndex = next;
-      saveProgress();
       render();
       container.querySelector(".cooking-mode__step")?.focus({ preventScroll: true });
     }
@@ -371,11 +344,9 @@
       }
       originalServes = Number.parseInt(options.originalServes, 10) || 0;
       serves = Number.parseInt(options.serves, 10) || originalServes;
-      const saved = readProgress(recipe.id);
-      stepIndex = saved ? Math.min(Math.max(0, saved.step || 0), steps.length - 1) : 0;
-      timers = saved && Array.isArray(saved.timers) ? saved.timers : [];
-      nextTimerId = timers.reduce((max, timer) => Math.max(max, timer.id || 0), 0) + 1;
-      checked = new Set(saved && Array.isArray(saved.checked) ? saved.checked : []);
+      stepIndex = 0;
+      timers = [];
+      checked = new Set();
       sheetOpen = false;
       ringing = null;
       container.classList.remove("hidden");
@@ -386,20 +357,20 @@
       }
       onOpenChange?.(true, { recipeId: recipe.id });
       render();
-      ensureTicking();
-      tick();
       container.querySelector(".cooking-mode__step")?.focus({ preventScroll: true });
       return true;
     }
 
-    // viaBack: closed by the browser's Back button (which already left the
-    // history entry cooking mode added).
+    // Stops every timer and forgets the step and ticks. viaBack: closed by the
+    // browser's Back button (which already left the history entry cooking mode
+    // added).
     function close({ finished = false, viaBack = false } = {}) {
       if (!recipe) return;
-      if (finished) clearProgress(recipe.id);
-      else saveProgress();
       stopTicking();
       stopAlarm();
+      timers = [];
+      ringing = null;
+      checked = new Set();
       const recipeId = recipe.id;
       recipe = null;
       container.classList.add("hidden");
@@ -409,10 +380,26 @@
       onOpenChange?.(false, { recipeId, viaBack, finished });
     }
 
+    function hasRunningTimers() {
+      return timers.some((timer) => !timer.done);
+    }
+
+    // Leaving stops the timers, so ask first while one is still counting.
+    function confirmLeave() {
+      return !hasRunningTimers() || window.confirm(t("cook.exitWithTimers"));
+    }
+
     function exit() {
-      const running = timers.some((timer) => !timer.done);
-      if (running && !window.confirm(t("cook.exitWithTimers"))) return;
-      close();
+      if (confirmLeave()) close();
+    }
+
+    function changeServings(direction) {
+      const next = nextServings(serves || originalServes, direction);
+      if (next === serves) return;
+      serves = next;
+      render();
+      container.querySelector(`[data-cook='servings-${direction > 0 ? "up" : "down"}']`)?.focus();
+      onServingsChange?.(serves);
     }
 
     // ── Events ──────────────────────────────────────────────────────────────
@@ -430,6 +417,8 @@
       else if (action === "pause") togglePause(timerId);
       else if (action === "cancel" || action === "dismiss") removeTimer(timerId);
       else if (action === "snooze") snooze(timerId);
+      else if (action === "servings-up") changeServings(1);
+      else if (action === "servings-down") changeServings(-1);
       else if (action === "open-sheet") {
         sheetOpen = true;
         render();
@@ -447,7 +436,6 @@
       if (box.checked) checked.add(index);
       else checked.delete(index);
       box.closest(".cooking-sheet__item")?.classList.toggle("is-checked", box.checked);
-      saveProgress();
     });
 
     // Swipe left/right on the step to move between steps.
@@ -496,8 +484,7 @@
       open,
       close,
       isOpen: () => Boolean(recipe),
-      savedStep,
-      stepCount: (method) => splitSteps(method).length
+      confirmLeave
     };
   }
 

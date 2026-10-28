@@ -51,7 +51,7 @@
     shrinkImageForUpload,
     debounce
   } = window.StorecipeHelpers;
-  const { scaleIngredientList, nextServings } = window.StorecipeIngredientParser;
+  const { scaleIngredientList, scaleAmountsInText, nextServings } = window.StorecipeIngredientParser;
   const { createRecipeMetaManager } = window.StorecipeRecipeMetaManager;
   const { createRecipeRenderer } = window.StorecipeRecipeRenderer;
   const { createSupabaseServices } = window.StorecipeSupabaseServices;
@@ -881,8 +881,13 @@
   const cookingMode = window.StorecipeCookingMode.createCookingMode({
     container: document.getElementById("cookingMode"),
     i18n,
-    helpers: { escapeHtml, scaleIngredientList },
-    onOpenChange(open, { recipeId, viaBack, finished } = {}) {
+    helpers: { escapeHtml, scaleIngredientList, scaleAmountsInText, nextServings },
+    // Servings changed in cooking mode: the recipe page follows.
+    onServingsChange(serves) {
+      const scaler = detailContent.querySelector(".serving-scaler");
+      if (scaler) applyServings(scaler, serves);
+    },
+    onOpenChange(open, { viaBack, finished } = {}) {
       void updateScreenWakeLock();
       if (open) {
         // Back (or the phone's back gesture) leaves cooking mode, not the recipe.
@@ -893,11 +898,6 @@
         skipCookingPopstate = true;
         window.history.back();
       }
-      const label = detailContent.querySelector(`[data-action='start-cooking'][data-id='${CSS.escape(String(recipeId))}'] [data-cook-start-label]`);
-      if (label) {
-        const step = cookingMode.savedStep(recipeId);
-        label.textContent = step ? t("cook.continue", { n: step }) : t("cook.start");
-      }
       detailContent.querySelector("[data-action='start-cooking']")?.focus({ preventScroll: true });
       if (finished) showToast(t("cook.finished"), "success", 3000);
     }
@@ -906,7 +906,6 @@
   const recipeRenderer = createRecipeRenderer({
     dom: { recipeList, detailContent, recipeDetail },
     state: {
-      cookingSavedStep: (recipeId) => cookingMode.savedStep(recipeId),
       get recipes() {
         // When the friends feed is on, the list shows friend-owned shared recipes.
         // The current recipe's user_id is checked downstream to render read-only
@@ -3416,6 +3415,37 @@
   });
   inlineEditManager.attachListeners();
 
+  // Shows the recipe page's ingredients for `current` servings.
+  function applyServings(scaler, current) {
+    const origServes = Number.parseInt(scaler.dataset.originalServes, 10) || 1;
+    const origIngredients = scaler.dataset.originalIngredients || "";
+    const display = scaler.querySelector("[data-scale-display]");
+    if (display) display.textContent = String(current);
+    const changed = current !== origServes;
+    scaler.querySelector("[data-action='scale-reset']")?.classList.toggle("hidden", !changed);
+
+    const card = scaler.closest(".recipe-detail-card") || detailContent;
+    const contentEl = card.querySelector("[data-field-content='ingredients']") ||
+      scaler.closest("[data-field='ingredients']")?.querySelector(".recipe-detail-card__editable");
+    const lines = scaleIngredientList(origIngredients, origServes, current);
+    const unadjusted = lines.map((line) => changed && line.status === "unadjusted");
+    if (contentEl) {
+      // Must match the detail renderer's structure, or scaling would replace
+      // the ingredient list with flat text.
+      contentEl.innerHTML = renderIngredientListHtml(lines.map((line) => line.text).join("\n"), unadjusted);
+    }
+    const ingredientsNote = card.querySelector("[data-scale-note='ingredients']");
+    if (ingredientsNote) {
+      ingredientsNote.textContent = t("detail.scaleUnadjusted");
+      ingredientsNote.classList.toggle("hidden", !unadjusted.some(Boolean));
+    }
+    const methodNote = card.querySelector("[data-scale-note='method']");
+    if (methodNote) {
+      methodNote.textContent = t("detail.scaleMethodNote", { serves: origServes });
+      methodNote.classList.toggle("hidden", !changed);
+    }
+  }
+
   detailContent.addEventListener("click", async (event) => {
     if (event.target.closest("[data-action='print']")) {
       window.print();
@@ -3426,7 +3456,6 @@
       const scaler = scaleBtn.closest(".serving-scaler");
       if (!scaler) return;
       const origServes = Number.parseInt(scaler.dataset.originalServes, 10) || 1;
-      const origIngredients = scaler.dataset.originalIngredients || "";
       const display = scaler.querySelector("[data-scale-display]");
       if (!display) return;
       let current = Number(display.textContent) || origServes;
@@ -3434,32 +3463,10 @@
       if (action === "scale-down") current = nextServings(current, -1);
       else if (action === "scale-up") current = nextServings(current, 1);
       else if (action === "scale-reset") current = origServes;
-      display.textContent = String(current);
-      const changed = current !== origServes;
-      scaler.querySelector("[data-action='scale-reset']")?.classList.toggle("hidden", !changed);
-
-      const card = scaler.closest(".recipe-detail-card") || detailContent;
-      const contentEl = card.querySelector("[data-field-content='ingredients']") ||
-        scaler.closest("[data-field='ingredients']")?.querySelector(".recipe-detail-card__editable");
-      const lines = scaleIngredientList(origIngredients, origServes, current);
-      const unadjusted = lines.map((line) => changed && line.status === "unadjusted");
-      if (contentEl) {
-        // Must match the detail renderer's structure, or scaling would replace
-        // the ingredient list with flat text.
-        contentEl.innerHTML = renderIngredientListHtml(lines.map((line) => line.text).join("\n"), unadjusted);
-      }
-      const ingredientsNote = card.querySelector("[data-scale-note='ingredients']");
-      if (ingredientsNote) {
-        ingredientsNote.textContent = t("detail.scaleUnadjusted");
-        ingredientsNote.classList.toggle("hidden", !unadjusted.some(Boolean));
-      }
-      const methodNote = card.querySelector("[data-scale-note='method']");
-      if (methodNote) {
-        methodNote.textContent = t("detail.scaleMethodNote", { serves: origServes });
-        methodNote.classList.toggle("hidden", !changed);
-      }
+      applyServings(scaler, current);
       return;
     }
+
 
     const cookButton = event.target.closest("button[data-action='start-cooking']");
     if (cookButton) {
@@ -3624,7 +3631,9 @@
       return;
     }
     if (cookingMode.isOpen()) {
-      cookingMode.close({ viaBack: true });
+      // Leaving stops the timers: if they'd rather stay, put the entry back.
+      if (cookingMode.confirmLeave()) cookingMode.close({ viaBack: true });
+      else window.history.pushState({ ...(window.history.state || {}), cooking: true }, "", window.location.href);
       return;
     }
     const targetId = event.state?.recipeId

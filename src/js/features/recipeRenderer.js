@@ -358,12 +358,11 @@ function createRecipeRenderer({
       }
       // Cooking mode: the method one step at a time.
       const cookingStepCount = window.StorecipeCookingSteps ? window.StorecipeCookingSteps.splitSteps(recipe.method).length : 0;
-      const cookingSavedStep = cookingStepCount && state.cookingSavedStep ? state.cookingSavedStep(recipe.id) : 0;
       const cookingHtml = cookingStepCount
         ? `<div class="cook-start">
             <button type="button" class="cook-start__button" data-action="start-cooking" data-id="${recipe.id}">
               <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16l13-8z"/></svg>
-              <span data-cook-start-label>${escapeHtml(cookingSavedStep ? t("cook.continue", { n: cookingSavedStep }) : t("cook.start"))}</span>
+              <span>${escapeHtml(t("cook.start"))}</span>
             </button>
             <p class="cook-start__hint">${escapeHtml(t(cookingStepCount === 1 ? "cook.hintOne" : "cook.hint", { n: cookingStepCount }))}</p>
           </div>`
