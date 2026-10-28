@@ -405,14 +405,6 @@ function createRecipeRenderer({
 
         ${cookingHtml}
 
-        ${"wakeLock" in navigator
-          ? `<label class="cook-mode">
-              <input type="checkbox" class="cook-mode__input" data-action="toggle-keep-screen-on"${state.keepScreenOn ? " checked" : ""} />
-              <span class="cook-mode__switch" aria-hidden="true"></span>
-              <span class="cook-mode__text">${escapeHtml(t("detail.keepScreenOn"))}</span>
-            </label>`
-          : ""}
-
         <div class="recipe-detail-card__columns">
         <section class="recipe-detail-card__section" data-field="ingredients">
           <h3 class="recipe-detail-card__editable-title">

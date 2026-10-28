@@ -891,7 +891,13 @@
     if (on && !keepAwakeVideo) {
       keepAwakeVideo = document.createElement("video");
       keepAwakeVideo.className = "keep-awake-video";
-      keepAwakeVideo.src = "src/media/keep-awake.mp4";
+      // MP4 for iPhones; WebM for browsers without H.264.
+      for (const [file, type] of [["keep-awake.mp4", "video/mp4"], ["keep-awake.webm", "video/webm"]]) {
+        const source = document.createElement("source");
+        source.src = `src/media/${file}`;
+        source.type = type;
+        keepAwakeVideo.appendChild(source);
+      }
       keepAwakeVideo.muted = true;
       keepAwakeVideo.loop = true;
       keepAwakeVideo.playsInline = true;
@@ -953,9 +959,7 @@
       get isFriendsFeedActive() {
         return state.isFriendsFeedActive;
       },
-      get keepScreenOn() {
-        return state.keepScreenOn;
-      }
+
     },
     hasSupabaseConfig,
     helpers: {
@@ -1035,20 +1039,12 @@
     clearRecipeUrl();
   });
 
-  // "Keep screen on" while a recipe is open, so the phone doesn't lock mid-cook.
+  // Cooking mode keeps the screen on, so the phone doesn't lock mid-cook.
   // Browsers drop the lock whenever the page is hidden, so it's taken again on return.
-  const KEEP_SCREEN_ON_KEY = "storecipe_keep_screen_on";
-  try {
-    state.keepScreenOn = window.localStorage.getItem(KEEP_SCREEN_ON_KEY) === "1";
-  } catch (_error) {
-    state.keepScreenOn = false;
-  }
   let screenWakeLock = null;
   async function updateScreenWakeLock() {
     if (!("wakeLock" in navigator)) return;
-    const wanted =
-      (cookingMode.isOpen() || (state.keepScreenOn && !recipeDetail.classList.contains("hidden"))) &&
-      document.visibilityState === "visible";
+    const wanted = cookingMode.isOpen() && document.visibilityState === "visible";
     if (wanted && !screenWakeLock) {
       try {
         screenWakeLock = await navigator.wakeLock.request("screen");
@@ -1056,31 +1052,21 @@
           screenWakeLock = null;
         });
       } catch (_error) {
-        screenWakeLock = null; // e.g. battery saver, or the browser refused
-        return false;
+        screenWakeLock = null; // e.g. battery saver; the keep-awake video still helps on iPhone
       }
     } else if (!wanted && screenWakeLock) {
       const lock = screenWakeLock;
       screenWakeLock = null;
       lock.release().catch(() => {});
     }
-    return true;
   }
-  new MutationObserver(() => void updateScreenWakeLock()).observe(recipeDetail, { attributes: true, attributeFilter: ["class"] });
   document.addEventListener("visibilitychange", () => void updateScreenWakeLock());
-  detailContent.addEventListener("change", (event) => {
-    const toggle = event.target.closest?.("[data-action='toggle-keep-screen-on']");
-    if (!toggle) return;
-    state.keepScreenOn = toggle.checked;
-    try {
-      window.localStorage.setItem(KEEP_SCREEN_ON_KEY, state.keepScreenOn ? "1" : "0");
-    } catch (_error) {
-      /* the choice still applies until the page is closed */
-    }
-    void updateScreenWakeLock().then((ok) => {
-      if (state.keepScreenOn && ok === false) showToast(t("detail.keepScreenOnFailed"), "info", 5000);
-    });
-  });
+  // The "Keep screen on" switch is gone (cooking mode does it); forget its setting.
+  try {
+    window.localStorage.removeItem("storecipe_keep_screen_on");
+  } catch (_error) {
+    /* nothing stored */
+  }
 
   // The browser's address bar follows the light or dark theme.
   const themeColorMeta = document.querySelector('meta[name="theme-color"]');

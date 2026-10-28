@@ -422,9 +422,9 @@
       const target = event.target.closest("[data-cook]");
       if (!target) {
         // A tap on the left or right half of the step goes back or forward,
-        // like a swipe (not while selecting text).
+        // like a swipe.
         const onStep = event.target.closest(".cooking-mode__body");
-        if (onStep && !event.target.closest("a, button, input, label") && !String(window.getSelection?.() || "")) {
+        if (onStep && !event.target.closest("a, button, input, label")) {
           goTo(stepIndex + (event.clientX < window.innerWidth / 2 ? -1 : 1));
         }
         return;
