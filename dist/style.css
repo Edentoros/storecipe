@@ -5161,6 +5161,13 @@ body.is-cooking {
   font-size: 17px;
 }
 
+.cooking-mode__offer:disabled {
+  opacity: 1;
+  background: #152637;
+  color: #6f849a;
+  cursor: default;
+}
+
 .cooking-mode__tip {
   padding: 16px 18px;
   border-radius: 16px;

@@ -85,9 +85,16 @@
       return timer.endAt ? (timer.endAt - Date.now()) / 1000 : timer.remaining;
     }
 
+    // The step's timer for that time, if it was started (one each, so a
+    // double tap can't stack copies; cancelling it offers it again).
+    function timerFor(step, seconds) {
+      return timers.find((timer) => timer.step === step && timer.offer === seconds);
+    }
+
     function startTimer(seconds, step) {
+      if (timerFor(step, seconds)) return;
       unlockAudio();
-      timers.push({ id: nextTimerId++, step, seconds, endAt: Date.now() + seconds * 1000, remaining: seconds, done: false });
+      timers.push({ id: nextTimerId++, step, offer: seconds, seconds, endAt: Date.now() + seconds * 1000, remaining: seconds, done: false });
       ensureTicking();
       render();
     }
@@ -288,9 +295,13 @@
       const offers = times
         .filter((time, index, all) => all.findIndex((other) => other.seconds === time.seconds) === index)
         .map(
-          (time) => `<button type="button" class="cooking-mode__offer" data-cook="start-timer" data-seconds="${time.seconds}">
-            ${ICONS.timer}<span>${escapeHtml(t("cook.startTimer", { time: formatDuration(time.seconds) }))}</span>
-          </button>`
+          (time) => {
+            const started = Boolean(timerFor(stepIndex, time.seconds));
+            const label = t(started ? "cook.timerStarted" : "cook.startTimer", { time: formatDuration(time.seconds) });
+            return `<button type="button" class="cooking-mode__offer" data-cook="start-timer" data-seconds="${time.seconds}"${started ? " disabled" : ""}>
+              ${ICONS.timer}<span>${escapeHtml(label)}</span>
+            </button>`;
+          }
         )
         .join("");
       const progress = steps
