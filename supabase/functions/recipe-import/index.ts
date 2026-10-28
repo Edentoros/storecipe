@@ -32,10 +32,12 @@ const corsHeaders = {
 };
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-// Cheapest model that works with this request shape (temperature + strict JSON
-// schema). Override with the OPENAI_MODEL secret, e.g. gpt-4.1-mini for better
-// rewriting/translation. Reasoning models (gpt-5*) need request changes first.
-const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-4.1-nano";
+// OpenAI's cheapest current model with strict JSON output and image input
+// (gpt-4.1-nano, the old default, was shut down on 23 Oct 2026). Override with
+// the OPENAI_MODEL secret, e.g. gpt-5.4-mini for better rewriting/translation.
+const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-5.4-nano";
+// gpt-5 models choose their own sampling; sending temperature can be refused.
+const SENDS_TEMPERATURE = !/^(gpt-5|o\d)/i.test(OPENAI_MODEL);
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
 
@@ -278,29 +280,42 @@ async function extractWithAi(kind: SourceKind, userContent: UserContent, languag
   if (!OPENAI_API_KEY) {
     throw new ImportError("ai_unavailable", 503, "AI import isn't configured yet (missing OPENAI_API_KEY).");
   }
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    signal: AbortSignal.timeout(OPENAI_TIMEOUT_MS),
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },
-    body: JSON.stringify({
-      model: OPENAI_MODEL,
-      temperature: 0.2,
-      max_completion_tokens: 3000,
-      response_format: { type: "json_schema", json_schema: RECIPE_JSON_SCHEMA },
-      messages: [
-        { role: "system", content: buildSystemPrompt(language, kind) },
-        { role: "user", content: userContent }
-      ]
-    })
-  }).catch((error) => {
-    console.error(`recipe-import: OpenAI ${error?.name === "TimeoutError" ? `timed out after ${OPENAI_TIMEOUT_MS / 1000}s` : "unreachable"}`, kind, String(error));
-    throw new ImportError("ai_failed", 502, "The AI service didn't respond. Please try again.");
-  });
+  const deadline = AbortSignal.timeout(OPENAI_TIMEOUT_MS);
+  const ask = (withTemperature: boolean) =>
+    fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      signal: deadline,
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },
+      body: JSON.stringify({
+        model: OPENAI_MODEL,
+        ...(withTemperature ? { temperature: 0.2 } : {}),
+        max_completion_tokens: 4000,
+        response_format: { type: "json_schema", json_schema: RECIPE_JSON_SCHEMA },
+        messages: [
+          { role: "system", content: buildSystemPrompt(language, kind) },
+          { role: "user", content: userContent }
+        ]
+      })
+    }).catch((error) => {
+      console.error(`recipe-import: OpenAI ${error?.name === "TimeoutError" ? `timed out after ${OPENAI_TIMEOUT_MS / 1000}s` : "unreachable"}`, kind, String(error));
+      throw new ImportError("ai_failed", 502, "The AI service didn't respond. Please try again.");
+    });
 
-  const data = await response.json().catch(() => ({}));
+  let response = await ask(SENDS_TEMPERATURE);
+  let data = await response.json().catch(() => ({}));
+  // A model that doesn't take temperature says so with a 400: ask once more without it.
+  if (response.status === 400 && SENDS_TEMPERATURE && /temperature/i.test(String(data?.error?.message || data?.error?.param || ""))) {
+    console.error("recipe-import: model refused temperature, retrying without it", OPENAI_MODEL);
+    response = await ask(false);
+    data = await response.json().catch(() => ({}));
+  }
   if (!response.ok) {
     // 429 with code insufficient_quota: out of credit or over the spending limit.
-    console.error("recipe-import: OpenAI error", response.status, data?.error?.code, data?.error?.type, data?.error?.message);
+    console.error("recipe-import: OpenAI error", OPENAI_MODEL, response.status, data?.error?.code, data?.error?.type, data?.error?.message);
+    // Retired or unknown model, bad key, no credit: nothing the user can retry.
+    if (response.status === 401 || response.status === 404 || data?.error?.code === "insufficient_quota") {
+      throw new ImportError("ai_unavailable", 503, "AI import isn't available right now.");
+    }
     throw new ImportError("ai_failed", 502, "The AI service couldn't process this. Please try again.");
   }
   const choice = data?.choices?.[0];

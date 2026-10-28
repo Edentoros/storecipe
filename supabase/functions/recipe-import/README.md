@@ -56,8 +56,9 @@ errors don't count.
 supabase secrets set OPENAI_API_KEY=sk-...
 # Your own user id, so you're never limited (find it with: SELECT id, email FROM auth.users;)
 supabase secrets set IMPORT_UNLIMITED_USER_IDS=<your-user-id>
-# Optional: default is gpt-4.1-nano (cheapest); gpt-4.1-mini rewrites/translates better
-supabase secrets set OPENAI_MODEL=gpt-4.1-mini
+# Optional: default is gpt-5.4-nano (cheapest); gpt-5.4-mini rewrites/translates better.
+# (gpt-4.1-nano was shut down by OpenAI on 23 Oct 2026: remove OPENAI_MODEL if it names it.)
+supabase secrets set OPENAI_MODEL=gpt-5.4-mini
 supabase secrets set FREE_IMPORT_LIMIT=5
 # Optional: imports per 24h across everyone (default 100, 0 = no cap)
 supabase secrets set SITE_DAILY_IMPORT_LIMIT=100

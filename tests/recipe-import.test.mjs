@@ -7,7 +7,7 @@ const SUPA = "https://proj.supabase.co";
 const env = { SUPABASE_URL: SUPA, SUPABASE_ANON_KEY: "anon-key", OPENAI_API_KEY: "sk-test", FREE_IMPORT_LIMIT: "5" };
 class NotFound extends Error {}
 let handler;
-let imports, aiAnswer, aiRequests;
+let imports, aiAnswer, aiRequests, aiError;
 
 globalThis.Deno = {
   env: { get: (k) => env[k] },
@@ -52,6 +52,7 @@ globalThis.fetch = async (input, init = {}) => {
   if (url === `${SUPA}/rest/v1/rpc/recipe_imports_last_24h`) return Response.json(0);
   if (url === "https://api.openai.com/v1/chat/completions") {
     aiRequests.push(JSON.parse(init.body));
+    if (aiError) return Response.json({ error: aiError.error }, { status: aiError.status });
     return Response.json({ choices: [{ message: { content: JSON.stringify(aiAnswer) } }] });
   }
   throw new TypeError("unexpected fetch: " + url);
@@ -76,6 +77,33 @@ beforeEach(() => {
   imports = [];
   aiRequests = [];
   aiAnswer = recipeAnswer();
+  aiError = null;
+});
+
+test("uses a current OpenAI model, without the temperature gpt-5 models refuse", async () => {
+  await call({ text: TYPED, language: "en" });
+  assert.equal(aiRequests[0].model, "gpt-5.4-nano");
+  assert.equal("temperature" in aiRequests[0], false);
+  assert.equal(aiRequests[0].response_format.type, "json_schema");
+});
+
+test("a retired model or no OpenAI credit says AI isn't available, and costs no import", async () => {
+  for (const err of [
+    { status: 404, error: { message: "The model `x` has been deprecated", code: "model_not_found" } },
+    { status: 429, error: { message: "You exceeded your current quota", code: "insufficient_quota" } }
+  ]) {
+    aiError = err;
+    const { status, data } = await call({ text: TYPED, language: "en" });
+    assert.equal(status, 503);
+    assert.equal(data.code, "ai_unavailable");
+  }
+  assert.equal(imports.length, 0);
+});
+
+test("other OpenAI errors are worth retrying", async () => {
+  aiError = { status: 500, error: { message: "server error" } };
+  const { data } = await call({ text: TYPED, language: "en" });
+  assert.equal(data.code, "ai_failed");
 });
 
 test("typed text is tidied by the AI and counted as an import", async () => {
