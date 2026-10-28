@@ -876,9 +876,37 @@
   friendsManager.attachListeners();
   friendsManager.setAddMode("code");
 
+  // Cooking mode: the recipe's method full screen, one step at a time.
+  let skipCookingPopstate = false;
+  const cookingMode = window.StorecipeCookingMode.createCookingMode({
+    container: document.getElementById("cookingMode"),
+    i18n,
+    helpers: { escapeHtml, scaleIngredientList },
+    onOpenChange(open, { recipeId, viaBack, finished } = {}) {
+      void updateScreenWakeLock();
+      if (open) {
+        // Back (or the phone's back gesture) leaves cooking mode, not the recipe.
+        window.history.pushState({ ...(window.history.state || {}), cooking: true }, "", window.location.href);
+        return;
+      }
+      if (!viaBack && window.history.state?.cooking) {
+        skipCookingPopstate = true;
+        window.history.back();
+      }
+      const label = detailContent.querySelector(`[data-action='start-cooking'][data-id='${CSS.escape(String(recipeId))}'] [data-cook-start-label]`);
+      if (label) {
+        const step = cookingMode.savedStep(recipeId);
+        label.textContent = step ? t("cook.continue", { n: step }) : t("cook.start");
+      }
+      detailContent.querySelector("[data-action='start-cooking']")?.focus({ preventScroll: true });
+      if (finished) showToast(t("cook.finished"), "success", 3000);
+    }
+  });
+
   const recipeRenderer = createRecipeRenderer({
     dom: { recipeList, detailContent, recipeDetail },
     state: {
+      cookingSavedStep: (recipeId) => cookingMode.savedStep(recipeId),
       get recipes() {
         // When the friends feed is on, the list shows friend-owned shared recipes.
         // The current recipe's user_id is checked downstream to render read-only
@@ -984,7 +1012,9 @@
   let screenWakeLock = null;
   async function updateScreenWakeLock() {
     if (!("wakeLock" in navigator)) return;
-    const wanted = state.keepScreenOn && !recipeDetail.classList.contains("hidden") && document.visibilityState === "visible";
+    const wanted =
+      (cookingMode.isOpen() || (state.keepScreenOn && !recipeDetail.classList.contains("hidden"))) &&
+      document.visibilityState === "visible";
     if (wanted && !screenWakeLock) {
       try {
         screenWakeLock = await navigator.wakeLock.request("screen");
@@ -3431,6 +3461,20 @@
       return;
     }
 
+    const cookButton = event.target.closest("button[data-action='start-cooking']");
+    if (cookButton) {
+      const recipe = [...state.recipes, ...(state.friendRecipes || [])].find(
+        (item) => String(item.id) === cookButton.dataset.id
+      );
+      if (!recipe) return;
+      const scaler = detailContent.querySelector(".serving-scaler");
+      cookingMode.open(recipe, {
+        originalServes: scaler?.dataset.originalServes,
+        serves: scaler?.querySelector("[data-scale-display]")?.textContent
+      });
+      return;
+    }
+
     const favTrigger = event.target.closest("button[data-action='toggle-fav']");
     if (favTrigger) {
       const recipeId = favTrigger.dataset.id;
@@ -3522,7 +3566,7 @@
   // header buttons, settings, overlays or toasts, or while a section is being
   // edited. Empty header space does count.
   const OUTSIDE_CLOSE_EXCLUDED =
-    ".app__header a, .app__header button, #authPanel, #settingsBackdrop, .modal-overlay, .image-fullview-overlay, .toast-container";
+    ".app__header a, .app__header button, #authPanel, #settingsBackdrop, .modal-overlay, .image-fullview-overlay, .toast-container, #cookingMode";
   const isOutsideOpenRecipe = (target) =>
     !recipeDetail.classList.contains("hidden") &&
     target instanceof Element &&
@@ -3575,6 +3619,14 @@
   }
 
   window.addEventListener("popstate", (event) => {
+    if (skipCookingPopstate) {
+      skipCookingPopstate = false;
+      return;
+    }
+    if (cookingMode.isOpen()) {
+      cookingMode.close({ viaBack: true });
+      return;
+    }
     const targetId = event.state?.recipeId
       || new URLSearchParams(window.location.search).get("recipe")
       || null;

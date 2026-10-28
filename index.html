@@ -13,8 +13,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
-    <link rel="stylesheet" href="dist/style.css?v=20261016c" />
-    <script src="src/js/core/bootTheme.js?v=20261016c"></script>
+    <link rel="stylesheet" href="dist/style.css?v=20261028a" />
+    <script src="src/js/core/bootTheme.js?v=20261028a"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
   </head>
   <body>
@@ -525,12 +525,15 @@
       </div>
     </div>
 
+    <div id="cookingMode" class="cooking-mode hidden" role="dialog" aria-modal="true" aria-labelledby="cookingStepLabel"></div>
+
     <script src="src/js/core/config.js"></script>
     <script defer src="src/js/core/constants.js"></script>
     <script defer src="src/js/core/domRefs.js"></script>
     <script defer src="src/js/core/helpers.js"></script>
     <script defer src="src/js/core/i18n.js"></script>
     <script defer src="src/js/core/ingredientParser.js"></script>
+    <script defer src="src/js/core/cookingSteps.js"></script>
     <script defer src="src/js/core/appState.js"></script>
     <script defer src="src/js/features/imageManager.js"></script>
     <script defer src="src/js/features/settingsManager.js"></script>
@@ -541,9 +544,10 @@
     <script defer src="src/js/features/inlineEditManager.js"></script>
     <script defer src="src/js/features/recipeMetaManager.js"></script>
     <script defer src="src/js/features/recipeRenderer.js"></script>
+    <script defer src="src/js/features/cookingMode.js"></script>
     <script defer src="src/js/features/friendsManager.js"></script>
     <script defer src="src/js/features/importNotice.js"></script>
     <script defer src="src/js/services/supabaseServices.js"></script>
-    <script defer src="app.js?v=20261016c"></script>
+    <script defer src="app.js?v=20261028a"></script>
   </body>
 </html>
