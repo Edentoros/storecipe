@@ -7,6 +7,10 @@ Vanilla HTML/JS/SCSS recipe app on Supabase, published by Netlify from `main`
 
 - After committing and pushing to the working branch, merge to `main` and push
   without asking: the owner wants every finished change live.
+- Supabase edge functions (`supabase/functions/`) deploy from GitHub Actions
+  on push to `main` (`.github/workflows/deploy-supabase.yml`, needs the
+  `SUPABASE_ACCESS_TOKEN` repo secret). Don't ask the owner to paste code into
+  the Supabase dashboard. SQL files still have to be run by hand.
 - Before merging, load the built site in a headless browser and check for
   script errors: a startup error leaves the app stuck on "Loading Storecipe...",
   and `npm test` does not catch that.
