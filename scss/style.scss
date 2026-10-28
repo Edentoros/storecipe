@@ -4488,6 +4488,18 @@ body.is-cooking {
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 6px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+// Its timer is running: muted, like the greyed-out button.
+.cooking-mode__time.is-started {
+  color: #9fb3c8;
+  text-decoration-style: dotted;
+  cursor: default;
+}
+.cooking-mode__time:focus-visible {
+  outline: 3px solid #f0a57f;
+  outline-offset: 2px;
 }
 // Amounts in the step, scaled to the servings chosen.
 .cooking-mode__amount {
@@ -4730,4 +4742,15 @@ body.is-cooking {
   .cooking-alert__card {
     animation: none;
   }
+}
+
+// Keeps an iPhone awake in cooking mode (see setKeepAwakeVideo in app.js).
+.keep-awake-video {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }

@@ -876,6 +876,40 @@
   friendsManager.attachListeners();
   friendsManager.setAddMode("code");
 
+  // Cooking mode keeps the screen on with the Wake Lock API (updateScreenWakeLock).
+  // iPhones also get a silent, invisible looping video, which iOS treats as
+  // "something is playing" and doesn't sleep through: older iOS has no wake
+  // lock, and some versions ignore it in the home-screen app. It has to start
+  // from a tap, so it's started by the tap that opens cooking mode.
+  const needsKeepAwakeVideo =
+    !("wakeLock" in navigator) ||
+    /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  let keepAwakeVideo = null;
+  function setKeepAwakeVideo(on) {
+    if (!needsKeepAwakeVideo) return;
+    if (on && !keepAwakeVideo) {
+      keepAwakeVideo = document.createElement("video");
+      keepAwakeVideo.className = "keep-awake-video";
+      keepAwakeVideo.src = "src/media/keep-awake.mp4";
+      keepAwakeVideo.muted = true;
+      keepAwakeVideo.loop = true;
+      keepAwakeVideo.playsInline = true;
+      keepAwakeVideo.setAttribute("playsinline", "");
+      keepAwakeVideo.setAttribute("aria-hidden", "true");
+      document.body.appendChild(keepAwakeVideo);
+    }
+    if (!keepAwakeVideo) return;
+    if (on) keepAwakeVideo.play().catch(() => {});
+    else keepAwakeVideo.pause();
+  }
+  // iOS pauses it while the app is in the background; carry on when back.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && keepAwakeVideo && cookingMode.isOpen()) {
+      keepAwakeVideo.play().catch(() => {});
+    }
+  });
+
   // Cooking mode: the recipe's method full screen, one step at a time.
   let skipCookingPopstate = false;
   const cookingMode = window.StorecipeCookingMode.createCookingMode({
@@ -889,6 +923,7 @@
     },
     onOpenChange(open, { viaBack, finished } = {}) {
       void updateScreenWakeLock();
+      setKeepAwakeVideo(open);
       if (open) {
         // Back (or the phone's back gesture) leaves cooking mode, not the recipe.
         window.history.pushState({ ...(window.history.state || {}), cooking: true }, "", window.location.href);

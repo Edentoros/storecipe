@@ -71,6 +71,8 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
+  // Video is fetched in byte ranges, which can't be cached; leave it to the browser.
+  if (request.destination === "video") return;
 
   if (url.pathname.includes("/storage/v1/object/")) {
     event.respondWith(photoFromCacheFirst(request, url));

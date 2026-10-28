@@ -5126,6 +5126,19 @@ body.is-cooking {
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 6px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.cooking-mode__time.is-started {
+  color: #9fb3c8;
+  text-decoration-style: dotted;
+  cursor: default;
+}
+
+.cooking-mode__time:focus-visible {
+  outline: 3px solid #f0a57f;
+  outline-offset: 2px;
 }
 
 .cooking-mode__amount {
@@ -5399,5 +5412,14 @@ body.is-cooking {
   .cooking-alert__card {
     animation: none;
   }
+}
+.keep-awake-video {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 

@@ -60,13 +60,15 @@
       return originalServes > 0 && serves > 0 ? serves / originalServes : 1;
     }
 
-    // Text with each time highlighted.
+    // Text with each time highlighted; tapping a time starts its timer.
     function timesHtml(text) {
       let html = "";
       let at = 0;
       for (const time of findTimes(text)) {
+        const started = Boolean(timerFor(stepIndex, time.seconds));
+        const label = t(started ? "cook.timerStarted" : "cook.startTimer", { time: formatDuration(time.seconds) });
         html += escapeHtml(text.slice(at, time.start));
-        html += `<mark class="cooking-mode__time">${escapeHtml(text.slice(time.start, time.end))}</mark>`;
+        html += `<mark class="cooking-mode__time${started ? " is-started" : ""}" data-cook="start-timer" data-seconds="${time.seconds}" role="button" tabindex="0" aria-label="${escapeHtml(label)}"${started ? ' aria-disabled="true"' : ""}>${escapeHtml(text.slice(time.start, time.end))}</mark>`;
         at = time.end;
       }
       return html + escapeHtml(text.slice(at));
@@ -416,8 +418,17 @@
     // ── Events ──────────────────────────────────────────────────────────────
 
     container.addEventListener("click", (event) => {
+      if (!recipe) return;
       const target = event.target.closest("[data-cook]");
-      if (!target || !recipe) return;
+      if (!target) {
+        // A tap on the left or right half of the step goes back or forward,
+        // like a swipe (not while selecting text).
+        const onStep = event.target.closest(".cooking-mode__body");
+        if (onStep && !event.target.closest("a, button, input, label") && !String(window.getSelection?.() || "")) {
+          goTo(stepIndex + (event.clientX < window.innerWidth / 2 ? -1 : 1));
+        }
+        return;
+      }
       const action = target.dataset.cook;
       const timerId = Number(target.dataset.timer);
       if (action === "next") goTo(stepIndex + 1);
@@ -468,6 +479,12 @@
     document.addEventListener("keydown", (event) => {
       if (!recipe || event.altKey || event.ctrlKey || event.metaKey) return;
       if (ringing) return;
+      // A highlighted time is a button for the keyboard too.
+      if ((event.key === "Enter" || event.key === " ") && event.target.matches?.("mark[data-cook]")) {
+        event.preventDefault();
+        event.target.click();
+        return;
+      }
       if (event.key === "Escape") {
         event.preventDefault();
         if (sheetOpen) {
