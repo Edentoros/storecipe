@@ -1011,7 +1011,9 @@ button:active:not(:disabled) {
   border-radius: 12px;
   margin: 0.75rem 0;
   min-height: 220px;
-  max-height: 420px;
+  // At most ~40% of the screen's height, so in landscape (an iPad on its
+  // side) the recipe starts on the first screen, not below a giant photo.
+  max-height: min(420px, 42vh);
   display: block;
   width: 100%;
   padding: 0;
@@ -1038,7 +1040,7 @@ button:active:not(:disabled) {
   width: 100%;
   height: 100%;
   min-height: 220px;
-  max-height: 420px;
+  max-height: min(420px, 42vh);
   object-fit: contain;
   z-index: 1;
   border-radius: 0;
@@ -3403,7 +3405,7 @@ body.theme-dark .difficulty-meter span.is-on {
 body.theme-dark .recipe-detail-card__columns > .recipe-detail-card__section[data-field="ingredients"] {
   background: #10202f;
 }
-@media (min-width: 820px) {
+@media (min-width: 720px) {
   .recipe-detail-card__columns {
     display: grid;
     grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
@@ -4415,7 +4417,9 @@ body.is-cooking {
 }
 .cooking-mode__step {
   margin: 0;
-  font-size: clamp(24px, 4vw + 14px, 40px);
+  // Grows with the screen (by width, but not past what the height allows in
+  // landscape): ~30px on a phone, ~48–52px on an iPad.
+  font-size: clamp(24px, min(4vw, 4.5vh) + 14px, 52px);
   line-height: 1.35;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -4425,6 +4429,8 @@ body.is-cooking {
   outline: none;
 }
 .cooking-mode__time {
+  // "8–10 minutes" stays on one line.
+  white-space: nowrap;
   background: none;
   color: #f0a57f;
   text-decoration: underline;
@@ -4695,4 +4701,78 @@ body.is-cooking {
   height: 1px;
   opacity: 0;
   pointer-events: none;
+}
+
+/* ── Tablets (iPad), portrait and landscape ─────────────────────────────────
+   Wider screens use the space: more recipes per row, and bigger text on the
+   recipe page, which is read from arm's length on the worktop. */
+@media (min-width: 720px) {
+  .recipe-detail-card .ingredient-list__item,
+  .recipe-detail-card .method-list__step {
+    font-size: 1.0625rem;
+  }
+  .recipe-detail-card .method-list {
+    gap: 0.9rem;
+  }
+}
+// Landscape iPads and laptops: four recipes per row instead of three.
+@media (min-width: 1100px) {
+  .app {
+    max-width: 1200px;
+  }
+  .toast-container {
+    max-width: 1200px;
+  }
+}
+// Forms read badly when stretched across a wide screen.
+.panel--form {
+  max-width: 960px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+// Cooking mode on a landscape tablet: a wider column for the bigger text, and
+// the ingredients open as a panel on the right, so the step stays in view.
+@media (orientation: landscape) and (min-width: 900px) {
+  .cooking-mode > * {
+    max-width: 880px;
+  }
+  // Docked: no dimming, and taps beside the panel reach the step (Next,
+  // swipes, tapping the sides all keep working with it open).
+  .cooking-sheet {
+    flex-direction: row;
+    justify-content: flex-end;
+    max-width: none;
+    background: none;
+    pointer-events: none;
+  }
+  .cooking-sheet__panel {
+    pointer-events: auto;
+    box-shadow: -12px 0 32px rgba(0, 0, 0, 0.35);
+  }
+  // The step moves over to sit beside the panel instead of under it.
+  .cooking-mode.is-sheet-open > :not(.cooking-sheet):not(.cooking-alert) {
+    max-width: none;
+    margin-left: 0;
+    margin-right: calc(min(440px, 40vw) + 8px);
+    width: auto;
+  }
+  .cooking-sheet__panel {
+    width: min(440px, 40vw);
+    max-width: none;
+    max-height: none;
+    height: 100%;
+    margin: 0;
+    padding-top: max(20px, env(safe-area-inset-top));
+    border-radius: 24px 0 0 24px;
+  }
+}
+
+// The sign-in card stays card-sized on a tablet instead of spanning the screen.
+@media (min-width: 720px) {
+  .panel--auth:not(.panel--auth-modal) {
+    max-width: 520px;
+    margin-left: auto;
+    margin-right: auto;
+  }
 }

@@ -4,6 +4,9 @@
 // the next time starts at step 1, and no timer is left running anywhere.
 (() => {
   const SWIPE_MIN_PX = 60;
+  // A landscape tablet docks the ingredients beside the step (see style.scss),
+  // so cooking carries on with it open; elsewhere it's a sheet on top.
+  const DOCKED_SHEET = window.matchMedia("(orientation: landscape) and (min-width: 900px)");
 
   function createCookingMode({ container, i18n, helpers, onOpenChange, onServingsChange }) {
     const t = i18n ? (key, params) => i18n.t(key, params) : (key) => key;
@@ -18,6 +21,8 @@
     let timers = [];
     let checked = new Set();
     let sheetOpen = false;
+    // Open, and covering the step (not docked beside it).
+    const sheetCovers = () => sheetOpen && !DOCKED_SHEET.matches;
     let ringing = null; // the timer whose alert is showing
     let tickId = null;
     let audio = null;
@@ -254,7 +259,7 @@
           </label>`;
         })
         .join("");
-      return `<div class="cooking-sheet" role="dialog" aria-modal="true" aria-labelledby="cookingSheetTitle">
+      return `<div class="cooking-sheet" role="${sheetCovers() ? "dialog" : "region"}"${sheetCovers() ? ' aria-modal="true"' : ""} aria-labelledby="cookingSheetTitle">
         <div class="cooking-sheet__panel">
           <div class="cooking-sheet__head">
             <h2 id="cookingSheetTitle">${escapeHtml(t("detail.ingredients"))}</h2>
@@ -310,6 +315,7 @@
         .map((_step, index) => `<span class="${index <= stepIndex ? "is-done" : ""}"></span>`)
         .join("");
 
+      container.classList.toggle("is-sheet-open", sheetOpen);
       container.innerHTML = `
         <div class="cooking-mode__top">
           <button type="button" class="cooking-mode__pill" data-cook="exit">${ICONS.close}<span>${escapeHtml(t("cook.exit"))}</span></button>
@@ -387,6 +393,7 @@
       const recipeId = recipe.id;
       recipe = null;
       container.classList.add("hidden");
+      container.classList.remove("is-sheet-open");
       container.innerHTML = "";
       document.body.classList.remove("is-cooking");
       for (const element of document.body.children) element.inert = false;
@@ -420,12 +427,20 @@
     container.addEventListener("click", (event) => {
       if (!recipe) return;
       const target = event.target.closest("[data-cook]");
+      // A tap on the dimmed area around the ingredients panel closes it.
+      if (!target && event.target.classList.contains("cooking-sheet")) {
+        sheetOpen = false;
+        render();
+        return;
+      }
       if (!target) {
-        // A tap on the left or right half of the step goes back or forward,
-        // like a swipe.
-        const onStep = event.target.closest(".cooking-mode__body");
-        if (onStep && !event.target.closest("a, button, input, label")) {
-          goTo(stepIndex + (event.clientX < window.innerWidth / 2 ? -1 : 1));
+        // A tap on the left or right half of the step (or the empty margin
+        // beside it on a wide screen) goes back or forward, like a swipe.
+        const body = container.querySelector(".cooking-mode__body");
+        const onStep = event.target.closest(".cooking-mode__body") || event.target === container;
+        if (body && onStep && !sheetCovers() && !event.target.closest("a, button, input, label")) {
+          const rect = body.getBoundingClientRect();
+          goTo(stepIndex + (event.clientX < rect.left + rect.width / 2 ? -1 : 1));
         }
         return;
       }
@@ -471,7 +486,7 @@
       const dx = event.changedTouches[0].clientX - touchStart.x;
       const dy = event.changedTouches[0].clientY - touchStart.y;
       touchStart = null;
-      if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy) * 1.5 || sheetOpen || ringing) return;
+      if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy) * 1.5 || sheetCovers() || ringing) return;
       goTo(stepIndex + (dx < 0 ? 1 : -1));
     }, { passive: true });
 
@@ -493,10 +508,10 @@
         } else {
           exit();
         }
-      } else if (!sheetOpen && event.key === "ArrowRight") {
+      } else if (!sheetCovers() && event.key === "ArrowRight") {
         event.preventDefault();
         goTo(stepIndex + 1);
-      } else if (!sheetOpen && event.key === "ArrowLeft") {
+      } else if (!sheetCovers() && event.key === "ArrowLeft") {
         event.preventDefault();
         goTo(stepIndex - 1);
       }
@@ -504,6 +519,11 @@
 
     // Timers count against the clock, so after the phone wakes up they're
     // right at once (intervals don't run while the page is hidden).
+    // Turning the iPad switches between the docked panel and the sheet.
+    DOCKED_SHEET.addEventListener("change", () => {
+      if (recipe && sheetOpen) render();
+    });
+
     document.addEventListener("visibilitychange", () => {
       if (recipe && document.visibilityState === "visible") tick();
     });
