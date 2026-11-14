@@ -135,22 +135,21 @@ describe("splitIngredientsLine", () => {
 });
 
 describe("nextServings", () => {
-  it("moves through even numbers", () => {
-    assert.equal(P.nextServings(2, 1), 4);
-    assert.equal(P.nextServings(4, 1), 6);
-    assert.equal(P.nextServings(6, -1), 4);
-  });
-
-  it("snaps an odd count to the next even number either way", () => {
-    assert.equal(P.nextServings(3, 1), 4);
-    assert.equal(P.nextServings(3, -1), 2);
+  it("moves one serving at a time", () => {
     assert.equal(P.nextServings(1, 1), 2);
+    assert.equal(P.nextServings(2, 1), 3);
+    assert.equal(P.nextServings(3, 1), 4);
+    assert.equal(P.nextServings(4, -1), 3);
+    assert.equal(P.nextServings(2, -1), 1);
   });
 
-  it("stays between 2 and 98", () => {
-    assert.equal(P.nextServings(2, -1), 2);
-    assert.equal(P.nextServings(1, -1), 2);
-    assert.equal(P.nextServings(98, 1), 98);
+  it("stays between 1 and 99", () => {
+    assert.equal(P.nextServings(1, -1), 1);
+    assert.equal(P.nextServings(99, 1), 99);
+  });
+
+  it("starts from 1 when the current value isn't a number", () => {
+    assert.equal(P.nextServings("", 1), 2);
   });
 });
 

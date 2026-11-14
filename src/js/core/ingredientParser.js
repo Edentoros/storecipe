@@ -284,12 +284,10 @@
     return items.filter(Boolean);
   }
 
-  // The servings scaler moves through even numbers (2, 4, 6…), from 2 to 98;
-  // an odd count (a recipe for 3) moves to the next even one either way.
+  // The servings scaler moves one serving at a time (1, 2, 3…), from 1 to 99.
   function nextServings(current, direction) {
-    const n = Math.round(Number(current)) || 2;
-    if (direction > 0) return Math.min(98, n % 2 ? n + 1 : n + 2);
-    return Math.max(2, n % 2 ? n - 1 : n - 2);
+    const n = Math.round(Number(current)) || 1;
+    return Math.min(99, Math.max(1, n + (direction > 0 ? 1 : -1)));
   }
 
   window.StorecipeIngredientParser = {

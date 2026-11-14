@@ -3442,6 +3442,8 @@
     const origIngredients = scaler.dataset.originalIngredients || "";
     const display = scaler.querySelector("[data-scale-display]");
     if (display) display.textContent = String(current);
+    const label = scaler.querySelector(".serving-scaler__label");
+    if (label) label.textContent = t(current === 1 ? "detail.servingsOne" : "detail.servings");
     const changed = current !== origServes;
     scaler.querySelector("[data-action='scale-reset']")?.classList.toggle("hidden", !changed);
 

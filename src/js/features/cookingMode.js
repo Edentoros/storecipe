@@ -267,9 +267,9 @@
           </div>
           ${originalServes
             ? `<div class="cooking-sheet__servings">
-                <button type="button" class="cooking-mode__round" data-cook="servings-down" aria-label="${escapeHtml(t("detail.scaleDown"))}"${serves <= 2 ? " disabled" : ""}>&minus;</button>
-                <span class="cooking-sheet__servings-value" aria-live="polite">${escapeHtml(t("cook.forServings", { n: serves }))}</span>
-                <button type="button" class="cooking-mode__round" data-cook="servings-up" aria-label="${escapeHtml(t("detail.scaleUp"))}"${serves >= 98 ? " disabled" : ""}>&plus;</button>
+                <button type="button" class="cooking-mode__round" data-cook="servings-down" aria-label="${escapeHtml(t("detail.scaleDown"))}"${serves <= 1 ? " disabled" : ""}>&minus;</button>
+                <span class="cooking-sheet__servings-value" aria-live="polite">${escapeHtml(t(serves === 1 ? "cook.forServingsOne" : "cook.forServings", { n: serves }))}</span>
+                <button type="button" class="cooking-mode__round" data-cook="servings-up" aria-label="${escapeHtml(t("detail.scaleUp"))}"${serves >= 99 ? " disabled" : ""}>&plus;</button>
               </div>`
             : ""}
           <div class="cooking-sheet__list">${items}</div>

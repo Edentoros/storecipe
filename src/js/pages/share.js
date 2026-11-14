@@ -131,7 +131,7 @@
             ${serves ? `<div class="serving-scaler">
               <button type="button" class="serving-scaler__btn" data-action="scale-down" aria-label="${escapeHtml(t("detail.scaleDown"))}">&minus;</button>
               <span class="serving-scaler__value" data-scale-display>${serves}</span>
-              <span class="serving-scaler__label">${escapeHtml(t("detail.servings"))}</span>
+              <span class="serving-scaler__label">${escapeHtml(t(Number.parseInt(serves, 10) === 1 ? "detail.servingsOne" : "detail.servings"))}</span>
               <button type="button" class="serving-scaler__btn" data-action="scale-up" aria-label="${escapeHtml(t("detail.scaleUp"))}">&plus;</button>
               <button type="button" class="serving-scaler__reset button--ghost hidden" data-action="scale-reset">${escapeHtml(t("detail.scaleReset"))}</button>
             </div>` : ""}
@@ -168,6 +168,8 @@
       else if (action === "scale-up") current = nextServings(current, 1);
       else if (action === "scale-reset") current = original;
       display.textContent = String(current);
+      const label = card.querySelector(".serving-scaler__label");
+      if (label) label.textContent = t(current === 1 ? "detail.servingsOne" : "detail.servings");
       const changed = current !== original;
       card.querySelector("[data-action='scale-reset']").classList.toggle("hidden", !changed);
       const lines = scaleIngredientList(ingredients, original, current);
