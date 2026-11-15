@@ -16,6 +16,14 @@ also how the form's "Tidy up" button works.
    Every redirect hop is re-checked, and hostnames are resolved so a public
    name pointing at a private or cloud-metadata address is refused. Pages are
    capped at 1.5 MB and 12 seconds.
+   **Blocked pages.** Some recipe blogs put their pages behind a bot check
+   (Cloudflare answers 403 with `cf-mitigated: challenge`). When a page is
+   blocked, the post is looked up in the site's WordPress feed instead: the
+   post's own feed (`/post/feed/?withoutcomments=1`), then the search feed
+   (`/feed/?s=words from the link`). The item whose link matches the pasted
+   link is imported as if it were the page (title, photo, recipe card). Same
+   safety checks, and both share the page's 12 seconds. If no feed has it, the
+   user sees "That website blocks automatic imports."
 4. **AI editor on every import.** The page is sent to OpenAI with a fixed,
    server-side prompt (`buildSystemPrompt` in `lib.ts`, the "house style"): clean
    dish-name title, 1-2 sentence description, tidy ingredients, 4-10 concise method

@@ -212,6 +212,99 @@ export function blockedUrlReason(url: URL): string | null {
   return null;
 }
 
+// ── WordPress feeds (for sites that block the page itself) ──────────────────
+// Some recipe blogs put their pages behind a bot check (Cloudflare's "are you
+// human" page), so a server can't read them. WordPress sites still publish
+// their posts as RSS feeds, which are meant for apps and readers, and a post's
+// feed item carries the whole post, recipe card included.
+
+export interface FeedItem {
+  title: string;
+  link: string;
+  html: string;
+  image: string | null;
+}
+
+// "https://www.site.com/My-Post/?utm=x" → "site.com/my-post": what two links
+// to the same post have in common.
+function comparableLink(value: string): string | null {
+  try {
+    const url = new URL(value.trim());
+    return `${url.hostname.toLowerCase().replace(/^www\./, "")}${url.pathname.replace(/\/+$/, "").toLowerCase()}`;
+  } catch (_error) {
+    return null;
+  }
+}
+
+/**
+ * The feeds that may hold the post at `url`: the post's own feed
+ * ("/post/feed/?withoutcomments=1" gives the post rather than its comments),
+ * then the site's search feed for the words in its address. Empty for links
+ * that don't look like a post ("/", or already a feed).
+ */
+export function wordPressFeedUrls(url: URL): URL[] {
+  const path = url.pathname.replace(/\/+$/, "");
+  const slug = decodeURIComponent(path.split("/").pop() || "");
+  if (!slug || /\.(xml|php|json)$/i.test(slug) || /(^|\/)feed$/i.test(path)) return [];
+  const words = slug.split(/[-_]+/).filter(Boolean).slice(0, 10);
+  const own = new URL(`${path}/feed/`, url.origin);
+  own.searchParams.set("withoutcomments", "1");
+  const search = new URL("/feed/", url.origin);
+  search.searchParams.set("s", words.join(" "));
+  return words.length ? [own, search] : [own];
+}
+
+function cdataOrText(value: string | undefined): string {
+  const text = value ?? "";
+  const cdata = /^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/.exec(text);
+  return cdata ? cdata[1] : htmlDecode(text);
+}
+
+// The post's main photo: the first real image (not an icon or star rating).
+function firstPhoto(html: string): string | null {
+  for (const tag of html.match(/<img\b[^>]*>/gi) || []) {
+    const src = /\ssrc=["']([^"']+)["']/i.exec(tag)?.[1];
+    if (!src || /\.svg(\?|$)/i.test(src) || /rating|icon|avatar|emoji/i.test(src)) continue;
+    const width = Number(/\swidth=["']?(\d+)/i.exec(tag)?.[1] || 0);
+    if (width && width < 200) continue;
+    const parsed = parseHttpUrl(htmlDecode(src));
+    if (parsed) return parsed.toString();
+  }
+  return null;
+}
+
+/** The feed item for the post at `url`, or null if the feed doesn't have it. */
+export function findFeedItem(xml: string, url: URL): FeedItem | null {
+  const wanted = comparableLink(url.toString());
+  for (const [, item] of xml.matchAll(/<item\b[^>]*>([\s\S]*?)<\/item>/gi)) {
+    const link = cdataOrText(/<link>([\s\S]*?)<\/link>/i.exec(item)?.[1]).trim();
+    if (!wanted || comparableLink(link) !== wanted) continue;
+    const content = /<content:encoded>([\s\S]*?)<\/content:encoded>/i.exec(item)?.[1];
+    const description = /<description>([\s\S]*?)<\/description>/i.exec(item)?.[1];
+    const html = cdataOrText(content ?? description);
+    if (!html.trim()) return null;
+    return {
+      title: cleanInlineText(cdataOrText(/<title>([\s\S]*?)<\/title>/i.exec(item)?.[1])),
+      link,
+      html,
+      image: firstPhoto(html)
+    };
+  }
+  return null;
+}
+
+/** A feed item as a small web page, so it goes through the usual import. */
+export function feedItemToPage(item: FeedItem): string {
+  const attr = (value: string) => value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  return [
+    "<!doctype html><html><head>",
+    `<title>${attr(item.title)}</title>`,
+    `<meta property="og:title" content="${attr(item.title)}">`,
+    item.image ? `<meta property="og:image" content="${attr(item.image)}">` : "",
+    `</head><body><article><h1>${attr(item.title)}</h1>${item.html}</article></body></html>`
+  ].join("");
+}
+
 // ── Structured data (schema.org Recipe JSON-LD) ─────────────────────────────
 
 export function extractJsonLdBlocks(html: string): unknown[] {

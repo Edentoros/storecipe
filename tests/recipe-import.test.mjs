@@ -7,13 +7,17 @@ const SUPA = "https://proj.supabase.co";
 const env = { SUPABASE_URL: SUPA, SUPABASE_ANON_KEY: "anon-key", OPENAI_API_KEY: "sk-test", FREE_IMPORT_LIMIT: "5" };
 class NotFound extends Error {}
 let handler;
-let imports, aiAnswer, aiRequests, aiError;
+let imports, aiAnswer, aiRequests, aiError, blog;
 
 globalThis.Deno = {
   env: { get: (k) => env[k] },
   serve: (h) => { handler = h; },
   errors: { NotFound },
-  resolveDns: async () => { throw new NotFound("no dns in tests"); }
+  // The test blog has a public address; everything else isn't found.
+  resolveDns: async (host, type) => {
+    if (host === "blog.example.com") return type === "A" ? ["93.184.216.34"] : [];
+    throw new NotFound("no dns in tests");
+  }
 };
 
 const users = { "Bearer user-token": "user-1" };
@@ -55,8 +59,28 @@ globalThis.fetch = async (input, init = {}) => {
     if (aiError) return Response.json({ error: aiError.error }, { status: aiError.status });
     return Response.json({ choices: [{ message: { content: JSON.stringify(aiAnswer) } }] });
   }
+  if (url.startsWith("https://blog.example.com/")) {
+    blog.requests.push(url);
+    const answer = blog.pages[url];
+    if (answer) return new Response(answer.body, { status: answer.status ?? 200, headers: answer.headers });
+    return new Response("not found", { status: 404, headers: { "content-type": "text/html" } });
+  }
   throw new TypeError("unexpected fetch: " + url);
 };
+
+// A WordPress blog behind Cloudflare's bot check: the page answers with the
+// check, the post's own feed carries the post with its recipe card.
+const POST = "https://blog.example.com/feta-tomato-pasta-with-salmon/";
+const BOT_CHECK = { status: 403, body: "<html>Just a moment...</html>", headers: { "content-type": "text/html", "cf-mitigated": "challenge" } };
+const rss = (items) => ({
+  headers: { "content-type": "application/rss+xml; charset=UTF-8" },
+  body: `<?xml version="1.0"?><rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>Blog</title>${items}</channel></rss>`
+});
+const item = (link, title, html) =>
+  `<item><title>${title}</title><link>${link}</link><content:encoded><![CDATA[${html}]]></content:encoded></item>`;
+const CARD = `<p>Weeknight pasta.</p><img src="https://blog.example.com/wp-content/plugins/wprm/stars-5.svg" width="80"><img width="1200" src="https://blog.example.com/uploads/feta-pasta.jpg">
+  <div class="wprm-recipe"><h3>Ingredients</h3><ul><li>2 lbs salmon filets</li><li>8 ounce feta block</li></ul>
+  <h3>Instructions</h3><ul><li>Bake the salmon and feta for 25 minutes.</li><li>Toss with the pasta.</li></ul></div>`;
 
 await import(new URL("../supabase/functions/recipe-import/index.ts", import.meta.url).href);
 assert.ok(handler, "Deno.serve handler captured");
@@ -78,6 +102,7 @@ beforeEach(() => {
   aiRequests = [];
   aiAnswer = recipeAnswer();
   aiError = null;
+  blog = { pages: {}, requests: [] };
 });
 
 test("uses a current OpenAI model, without the temperature gpt-5 models refuse", async () => {
@@ -179,4 +204,52 @@ test("text and photo imports respect the free limit", async () => {
   assert.equal(status, 402);
   assert.equal(data.code, "quota_exceeded");
   assert.equal(aiRequests.length, 0);
+});
+
+test("a page behind a bot check is imported from the site's WordPress feed", async () => {
+  blog.pages[POST] = BOT_CHECK;
+  blog.pages[`${POST}feed/?withoutcomments=1`] = rss(item(POST, "Feta Tomato Pasta with Salmon", CARD));
+  const { status, data } = await call({ url: POST, language: "en" });
+  assert.equal(status, 200);
+  assert.equal(data.source, "ai");
+  assert.equal(imports.length, 1);
+  assert.equal(imports[0].source_url, POST);
+  const message = aiRequests[0].messages[1].content;
+  assert.match(message, /Feta Tomato Pasta with Salmon/);
+  assert.match(message, /2 lbs salmon filets/);
+  assert.match(message, /Bake the salmon and feta for 25 minutes/);
+  // The post's photo, not the star-rating icon.
+  assert.match(message, /uploads\/feta-pasta\.jpg/);
+  assert.doesNotMatch(message, /stars-5\.svg/);
+});
+
+test("when the post's own feed doesn't have it, the search feed is tried", async () => {
+  blog.pages[POST] = BOT_CHECK;
+  blog.pages["https://blog.example.com/feed/?s=feta+tomato+pasta+with+salmon"] = rss(
+    item("https://blog.example.com/other-pasta/", "Other pasta", "<p>Not this one</p>") +
+      item(POST, "Feta Tomato Pasta with Salmon", CARD)
+  );
+  const { status } = await call({ url: POST, language: "en" });
+  assert.equal(status, 200);
+  assert.match(aiRequests[0].messages[1].content, /8 ounce feta block/);
+  assert.doesNotMatch(aiRequests[0].messages[1].content, /Not this one/);
+});
+
+test("a blocked page with no usable feed still says the site blocks imports, and costs nothing", async () => {
+  blog.pages[POST] = BOT_CHECK;
+  blog.pages["https://blog.example.com/feed/?s=feta+tomato+pasta+with+salmon"] = rss(
+    item("https://blog.example.com/other-pasta/", "Other pasta", "<p>Not this one</p>")
+  );
+  const { status, data } = await call({ url: POST, language: "en" });
+  assert.equal(status, 502);
+  assert.equal(data.code, "fetch_failed");
+  assert.match(data.error, /blocks automatic imports/);
+  assert.equal(aiRequests.length, 0);
+  assert.equal(imports.length, 0);
+});
+
+test("a page that simply isn't there doesn't go looking in feeds", async () => {
+  const { data } = await call({ url: POST, language: "en" });
+  assert.match(data.error, /status 404/);
+  assert.deepEqual(blog.requests, [POST]);
 });

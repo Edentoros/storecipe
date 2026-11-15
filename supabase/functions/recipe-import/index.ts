@@ -9,6 +9,8 @@ import {
   extractMainText,
   extractMetaContent,
   extractTitle,
+  feedItemToPage,
+  findFeedItem,
   findRecipeNode,
   isIpLiteral,
   isPrivateAddress,
@@ -19,6 +21,7 @@ import {
   recipeFromJsonLd,
   resolveLanguage,
   summariseStructuredRecipe,
+  wordPressFeedUrls,
   RECIPE_JSON_SCHEMA,
   MAX_IMAGE_DATA_URL_CHARS,
   type ImportedRecipe,
@@ -68,6 +71,9 @@ const USER_AGENT =
 class ImportError extends Error {
   code: string;
   status: number;
+  // The website refused us (a bot check, or too many requests), as opposed to
+  // a broken link: worth trying the site's feed instead.
+  blocked = false;
   constructor(code: string, status: number, message: string) {
     super(message);
     this.code = code;
@@ -219,9 +225,9 @@ async function readCapped(response: Response, maxBytes: number): Promise<Uint8Ar
   return out;
 }
 
-async function fetchPage(startUrl: URL): Promise<{ html: string; finalUrl: URL }> {
+async function fetchPage(startUrl: URL, timeoutMs = PAGE_TIMEOUT_MS): Promise<{ html: string; finalUrl: URL }> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), PAGE_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     let current = startUrl;
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
@@ -245,13 +251,16 @@ async function fetchPage(startUrl: URL): Promise<{ html: string; finalUrl: URL }
       }
       if (!response.ok) {
         await response.body?.cancel().catch(() => {});
-        throw new ImportError(
+        // Cloudflare's bot check answers 403 (or 503) and says so in cf-mitigated.
+        const blocked =
+          response.status === 403 || response.status === 429 || Boolean(response.headers.get("cf-mitigated"));
+        const error = new ImportError(
           "fetch_failed",
           502,
-          response.status === 403 || response.status === 429
-            ? "That website blocks automatic imports."
-            : `That website didn't return the page (status ${response.status}).`
+          blocked ? "That website blocks automatic imports." : `That website didn't return the page (status ${response.status}).`
         );
+        error.blocked = blocked;
+        throw error;
       }
       const contentType = response.headers.get("content-type");
       if (contentType && !/html|xml/i.test(contentType)) {
@@ -268,6 +277,30 @@ async function fetchPage(startUrl: URL): Promise<{ html: string; finalUrl: URL }
     throw new ImportError("fetch_failed", 502, "Couldn't reach that website. Check the link.");
   } finally {
     clearTimeout(timer);
+  }
+}
+
+// The page, or, when the website blocks us, its post from the site's
+// WordPress feed (see wordPressFeedUrls in lib.ts). The feed gets what's left
+// of the page's time, so a blocked page doesn't stretch the import.
+async function fetchPageOrFeed(url: URL): Promise<{ html: string; finalUrl: URL; viaFeed: boolean }> {
+  const started = Date.now();
+  try {
+    return { ...(await fetchPage(url)), viaFeed: false };
+  } catch (error) {
+    if (!(error instanceof ImportError && error.blocked)) throw error;
+    for (const feedUrl of wordPressFeedUrls(url)) {
+      const timeLeft = PAGE_TIMEOUT_MS - (Date.now() - started);
+      if (timeLeft < 1_500) break;
+      try {
+        const feed = await fetchPage(feedUrl, timeLeft);
+        const item = findFeedItem(feed.html, url);
+        if (item) return { html: feedItemToPage(item), finalUrl: new URL(item.link), viaFeed: true };
+      } catch (_feedError) {
+        // No feed, or blocked too: try the next one, then report the page's error.
+      }
+    }
+    throw error;
   }
 }
 
@@ -424,7 +457,8 @@ Deno.serve(async (request) => {
     const requestedUrl = parseHttpUrl(body?.url);
     if (!requestedUrl) throw new ImportError("invalid_url", 400, "Paste a full web address starting with http:// or https://.");
 
-    const { html, finalUrl } = await fetchPage(requestedUrl);
+    const { html, finalUrl, viaFeed } = await fetchPageOrFeed(requestedUrl);
+    if (viaFeed) console.log("recipe-import: page blocked, imported from the site's feed", finalUrl.toString());
     const sourceUrl = finalUrl.toString();
     const pageTitle = extractMetaContent(html, "og:title") || extractTitle(html) || "Imported recipe";
     const ogImage = parseHttpUrl(extractMetaContent(html, "og:image"))?.toString() || null;
