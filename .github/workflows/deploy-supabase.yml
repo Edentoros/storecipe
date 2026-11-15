@@ -41,14 +41,16 @@ jobs:
         with:
           version: latest
 
+      # --yes: newer CLIs ask before deploying and stop when no one can answer.
+
       # Signed-in users only: keeps Supabase's JWT check on.
       - name: Deploy recipe-import
-        run: supabase functions deploy recipe-import --project-ref "$PROJECT_REF" --use-api
+        run: supabase functions deploy recipe-import --project-ref "$PROJECT_REF" --use-api --yes
 
       - name: Deploy image-proxy
-        run: supabase functions deploy image-proxy --project-ref "$PROJECT_REF" --use-api
+        run: supabase functions deploy image-proxy --project-ref "$PROJECT_REF" --use-api --yes
 
       # Opened by people who aren't signed in (share links): no JWT check;
       # the function checks sign-in itself for saving.
       - name: Deploy shared-recipe
-        run: supabase functions deploy shared-recipe --project-ref "$PROJECT_REF" --use-api --no-verify-jwt
+        run: supabase functions deploy shared-recipe --project-ref "$PROJECT_REF" --use-api --no-verify-jwt --yes
