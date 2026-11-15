@@ -1562,6 +1562,50 @@
     }
   }
 
+  // ── "Are you sure?" ────────────────────────────────────────────────────────
+  // Resolves true for the confirm button, false for Cancel, Escape or a tap
+  // outside. Cancel has focus, so Enter on a keyboard doesn't delete.
+  const confirmDialog = document.getElementById("confirmDialog");
+  function askToConfirm({ title, body, confirmLabel }) {
+    if (!confirmDialog) return Promise.resolve(window.confirm(title));
+    const okButton = confirmDialog.querySelector("[data-confirm='ok']");
+    const cancelButton = confirmDialog.querySelector("[data-confirm='cancel']");
+    confirmDialog.querySelector("#confirmDialogTitle").textContent = title;
+    confirmDialog.querySelector("#confirmDialogBody").textContent = body;
+    okButton.textContent = confirmLabel;
+    cancelButton.textContent = t("common.cancel");
+    const returnFocus = document.activeElement;
+    return new Promise((resolve) => {
+      const finish = (answer) => {
+        confirmDialog.removeEventListener("click", onClick);
+        document.removeEventListener("keydown", onKey, true);
+        confirmDialog.classList.add("hidden");
+        returnFocus?.focus?.({ preventScroll: true });
+        resolve(answer);
+      };
+      const onClick = (event) => {
+        if (event.target === confirmDialog) finish(false);
+        const choice = event.target.closest("[data-confirm]");
+        if (choice) finish(choice.dataset.confirm === "ok");
+      };
+      // Capture phase, so Escape closes this and not the recipe behind it.
+      const onKey = (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          finish(false);
+        } else if (event.key === "Tab") {
+          event.preventDefault();
+          (document.activeElement === okButton ? cancelButton : okButton).focus();
+        }
+      };
+      confirmDialog.addEventListener("click", onClick);
+      document.addEventListener("keydown", onKey, true);
+      confirmDialog.classList.remove("hidden");
+      cancelButton.focus();
+    });
+  }
+
   const UNDO_DELETE_MS = 8000;
   const pendingDeletes = new Map();
 
@@ -3620,7 +3664,13 @@
     const button = event.target.closest("button[data-action='delete']");
     if (!button) return;
 
-    await deleteRecipe(button.dataset.id);
+    const recipe = state.recipes.find((item) => item.id === button.dataset.id);
+    const confirmed = await askToConfirm({
+      title: t("confirm.deleteTitle", { title: recipe?.title || t("card.untitled") }),
+      body: t("confirm.deleteBody"),
+      confirmLabel: t("detail.delete")
+    });
+    if (confirmed) await deleteRecipe(button.dataset.id);
   });
 
   closeDetail.addEventListener("click", () => {

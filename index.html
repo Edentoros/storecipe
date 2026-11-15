@@ -13,9 +13,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
-    <link rel="stylesheet" href="dist/style.css?v=20261115b" />
-    <script src="src/js/core/bootTheme.js?v=20261115b"></script>
-    <script src="src/js/core/noZoom.js?v=20261115b"></script>
+    <link rel="stylesheet" href="dist/style.css?v=20261115c" />
+    <script src="src/js/core/bootTheme.js?v=20261115c"></script>
+    <script src="src/js/core/noZoom.js?v=20261115c"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
   </head>
   <body>
@@ -526,6 +526,17 @@
       </div>
     </div>
 
+    <div id="confirmDialog" class="modal-overlay confirm-dialog hidden">
+      <div class="modal confirm-dialog__box" role="alertdialog" aria-modal="true" aria-labelledby="confirmDialogTitle" aria-describedby="confirmDialogBody">
+        <h2 id="confirmDialogTitle"></h2>
+        <p id="confirmDialogBody"></p>
+        <div class="confirm-dialog__actions">
+          <button type="button" class="button button--ghost" data-confirm="cancel"></button>
+          <button type="button" class="button button--danger" data-confirm="ok"></button>
+        </div>
+      </div>
+    </div>
+
     <div id="cookingMode" class="cooking-mode hidden" role="dialog" aria-modal="true" aria-labelledby="cookingStepLabel"></div>
 
     <script src="src/js/core/config.js"></script>
@@ -549,6 +560,6 @@
     <script defer src="src/js/features/friendsManager.js"></script>
     <script defer src="src/js/features/importNotice.js"></script>
     <script defer src="src/js/services/supabaseServices.js"></script>
-    <script defer src="app.js?v=20261115b"></script>
+    <script defer src="app.js?v=20261115c"></script>
   </body>
 </html>
