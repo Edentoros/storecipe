@@ -21,12 +21,13 @@
     invalid_text: "warning",
     invalid_image: "warning",
     too_many_files: "warning",
+    unsafe: "warning",
     file_too_big: "warning"
   };
   const RETRYABLE = new Set(["fetch_failed", "ai_failed", "ai_failed_text", "service_unreachable", "server_error"]);
   const NO_NEW_LINK = new Set([
     "quota_exceeded", "unauthenticated", "ai_unavailable", "quota_unavailable", "not_deployed", "busy",
-    "not_recipe_photo", "invalid_image", "too_many_files", "file_too_big"
+    "not_recipe_photo", "invalid_image", "too_many_files", "file_too_big", "unsafe"
   ]);
   // Several server codes mean the same thing to the user.
   const CODE_ALIASES = { quota_unavailable: "ai_unavailable", not_deployed: "ai_unavailable", invalid_request: "server_error" };

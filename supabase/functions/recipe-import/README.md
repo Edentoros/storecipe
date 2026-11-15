@@ -33,18 +33,28 @@ also how the form's "Tidy up" button works.
    that data lacks, such as prep vs cook time and the recipe notes.
 5. **Output language** is the app's current language (`en` or `ru`), translating
    if needed. The browser can only pick from that fixed list.
-6. **Recipe check.** The model judges whether the page is a recipe; pages with
+6. **Metric, always.** The AI is told to write European measures (g, ml, °C,
+   cm; teaspoons and tablespoons stay), converting cups by each ingredient's
+   usual weight and never just relabelling °F as °C. `metric.ts` then checks
+   its answer: any pounds, ounces, cups, pints, quarts, sticks of butter,
+   inches or °F left are converted, and a "400°C" oven (300-550°C, a swapped
+   °F) becomes 200°C. This runs on every import and Tidy up.
+7. **Not food.** Recipes listing something that isn't food (petrol, bleach,
+   glue…), by the AI's own check (`rejection_reason` "unsafe: …") or the word
+   list in `metric.ts`, are refused with code `unsafe`, even from a page with
+   structured recipe data. It still uses an import.
+8. **Recipe check.** The model judges whether the page is a recipe; pages with
    structured Recipe data always count as one. Every result must still contain
    at least two ingredients and one step.
-7. **Fallback.** If the AI is unavailable and the site has structured data, that
+9. **Fallback.** If the AI is unavailable and the site has structured data, that
    data is returned untidied (`tidied: false`) rather than failing.
 
-8. **Site-wide daily cap.** At most `SITE_DAILY_IMPORT_LIMIT` imports (default
+10. **Site-wide daily cap.** At most `SITE_DAILY_IMPORT_LIMIT` imports (default
    100) per 24 hours across all accounts, so mass sign-ups can't run up the AI
    bill. Unlimited users are exempt. Inactive until `sql/abuse-protection.sql`
    has been run.
 
-9. **Text, photos and PDFs.** `{ text }` (20 to 20,000 characters) or
+11. **Text, photos and PDFs.** `{ text }` (20 to 20,000 characters) or
    `{ images }` (1 to 5 `data:` URLs, in order: JPEG, PNG or WebP photos of at
    most 4 MB of base64, which the app shrinks first, or PDFs of at most 4 MB;
    8 MB of base64 in all) skip the page fetch and go straight to the AI editor,
@@ -102,7 +112,7 @@ Errors: `{ error, code }` where `code` is one of `unauthenticated`,
 `quota_exceeded`, `invalid_url`, `url_blocked`, `fetch_failed`, `not_html`,
 `no_readable_text`, `not_recipe`, `ai_unavailable`, `ai_failed`,
 `quota_unavailable`, `busy` (site-wide daily cap reached), `invalid_text`,
-`invalid_image`, `too_many_files`, `file_too_big`, `invalid_request`,
+`invalid_image`, `too_many_files`, `file_too_big`, `unsafe`, `invalid_request`,
 `server_error`.
 
 ### image-proxy

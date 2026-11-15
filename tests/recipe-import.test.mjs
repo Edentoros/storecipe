@@ -290,3 +290,30 @@ test("a page that simply isn't there doesn't go looking in feeds", async () => {
   assert.match(data.error, /status 404/);
   assert.deepEqual(blog.requests, [POST]);
 });
+
+test("whatever the AI leaves in cups, pounds or °F is converted to metric", async () => {
+  aiAnswer = recipeAnswer({
+    title: "Salmon pasta",
+    ingredients: ["2 lb salmon fillets", "1/2 cup parmesan, grated", "2 tbsp pesto"],
+    method: ["Preheat the oven to 400°C.", "Bake for 25 minutes."]
+  });
+  const { status, data } = await call({ text: TYPED, language: "en" });
+  assert.equal(status, 200);
+  assert.deepEqual(data.recipe.ingredients, ["900 g salmon fillets", "50 g parmesan, grated", "2 tbsp pesto"]);
+  assert.deepEqual(data.recipe.method, ["Preheat the oven to 200°C.", "Bake for 25 minutes."]);
+  assert.match(aiRequests[0].messages[0].content, /never just change the letter/i);
+});
+
+test("a recipe with something that isn't food is refused, whatever the AI says", async () => {
+  aiAnswer = recipeAnswer({ ingredients: ["500 g potatoes", "1 cup petrol"] });
+  let res = await call({ text: TYPED, language: "en" });
+  assert.equal(res.status, 422);
+  assert.equal(res.data.code, "unsafe");
+  assert.match(res.data.error, /petrol/);
+
+  aiAnswer = recipeAnswer({ is_recipe: false, rejection_reason: "unsafe: contains bleach", ingredients: [], method: [] });
+  res = await call({ text: TYPED, language: "en" });
+  assert.equal(res.data.code, "unsafe");
+  assert.equal(imports.length, 2);
+  assert.ok(imports.every((row) => row.status === "rejected"));
+});

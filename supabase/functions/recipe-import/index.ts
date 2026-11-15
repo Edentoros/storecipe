@@ -27,6 +27,7 @@ import {
   type ImportedRecipe,
   type SourceKind
 } from "./lib.ts";
+import { findNotFood, toMetricRecipe } from "./metric.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -416,7 +417,16 @@ async function importWithoutPage(
 
   const raw = await extractWithAi(kind, userContent, language);
   // No link and no page photo: never take an image address the AI came up with.
-  const recipe: ImportedRecipe = { ...normalizeAiRecipe(raw, "", "", null), image_url: null, source_url: "" };
+  // Then the metric check: whatever the AI left in cups, pounds or °F.
+  const recipe: ImportedRecipe = toMetricRecipe(
+    { ...normalizeAiRecipe(raw, "", "", null), image_url: null, source_url: "" },
+    language
+  );
+  const unsafe = unsafeRecipeError(raw, recipe.ingredients);
+  if (unsafe) {
+    await recordImport(caller, kind, "ai", "rejected");
+    return errorResponse(unsafe, { remaining: remainingAfter(used + 1, unlimited) });
+  }
   if (raw.is_recipe === true && looksLikeRecipe(recipe)) {
     await recordImport(caller, kind, "ai", "ok");
     return jsonResponse(200, { recipe, source: "ai", tidied: true, remaining: remainingAfter(used + 1, unlimited) });
@@ -425,6 +435,21 @@ async function importWithoutPage(
   return errorResponse(new ImportError("not_recipe", 422, "That doesn't look like a cooking recipe."), {
     remaining: remainingAfter(used + 1, unlimited)
   });
+}
+
+// A recipe with something in it that isn't food ("1 cup petrol"): the AI's
+// own check ("unsafe: …") or the word list in metric.ts. Never imported, even
+// from a page whose structured data says it's a recipe.
+function unsafeRecipeError(raw: Record<string, unknown>, ...ingredientLists: string[][]): ImportError | null {
+  const word = ingredientLists.map(findNotFood).find(Boolean);
+  const aiSaysUnsafe = raw.is_recipe !== true && /^\s*unsafe\b/i.test(String(raw.rejection_reason || ""));
+  if (!word && !aiSaysUnsafe) return null;
+  console.log(`recipe-import: refused as not food: ${word || raw.rejection_reason}`);
+  return new ImportError(
+    "unsafe",
+    422,
+    word ? `That lists something that isn't food (“${word}”), so it wasn't imported.` : "That has something in it that isn't safe to eat, so it wasn't imported."
+  );
 }
 
 // ── Handler ─────────────────────────────────────────────────────────────────
@@ -490,7 +515,7 @@ Deno.serve(async (request) => {
     // but often messy (note references, junk descriptions), so it's input for the
     // AI editor rather than the final result.
     const node = findRecipeNode(extractJsonLdBlocks(html));
-    const structuredRecipe = node ? recipeFromJsonLd(node, sourceUrl, pageTitle, ogImage) : null;
+    const structuredRecipe = node ? toMetricRecipe(recipeFromJsonLd(node, sourceUrl, pageTitle, ogImage), language) : null;
     const hasStructuredRecipe = Boolean(structuredRecipe && looksLikeRecipe(structuredRecipe));
     const pageText = extractMainText(html).slice(0, MAX_TEXT_CHARS);
     if (!hasStructuredRecipe && pageText.length < 80) {
@@ -498,6 +523,8 @@ Deno.serve(async (request) => {
     }
 
     const useStructuredFallback = async () => {
+      const unsafe = unsafeRecipeError({ is_recipe: true }, structuredRecipe!.ingredients);
+      if (unsafe) throw unsafe;
       await recordImport(caller, sourceUrl, "json-ld", "ok");
       return jsonResponse(200, {
         recipe: structuredRecipe,
@@ -520,7 +547,12 @@ Deno.serve(async (request) => {
       throw error;
     }
 
-    const recipe: ImportedRecipe = normalizeAiRecipe(raw, sourceUrl, pageTitle, ogImage);
+    const recipe: ImportedRecipe = toMetricRecipe(normalizeAiRecipe(raw, sourceUrl, pageTitle, ogImage), language);
+    const unsafe = unsafeRecipeError(raw, recipe.ingredients, structuredRecipe?.ingredients ?? []);
+    if (unsafe) {
+      await recordImport(caller, sourceUrl, "ai", "rejected");
+      return errorResponse(unsafe, { remaining: remainingAfter(used + 1, unlimited) });
+    }
     // Structured Recipe data is proof enough that it's a recipe, even if the
     // model says otherwise; the AI only gets to reject pages without it.
     const confirmedRecipe = raw.is_recipe === true || hasStructuredRecipe;
