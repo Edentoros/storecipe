@@ -288,16 +288,25 @@ async function fetchPageOrFeed(url: URL): Promise<{ html: string; finalUrl: URL;
   try {
     return { ...(await fetchPage(url)), viaFeed: false };
   } catch (error) {
+    // Each step goes to the function's logs (Supabase → Edge Functions →
+    // recipe-import → Logs), since the app shows one message for all of them.
+    const say = (what: string) => console.log(`recipe-import: ${what}`);
+    say(`page ${url} failed after ${Date.now() - started} ms: ${(error as Error).message}`);
     if (!(error instanceof ImportError && error.blocked)) throw error;
     for (const feedUrl of wordPressFeedUrls(url)) {
       const timeLeft = PAGE_TIMEOUT_MS - (Date.now() - started);
-      if (timeLeft < 1_500) break;
+      if (timeLeft < 1_500) {
+        say(`no time left for feed ${feedUrl}`);
+        break;
+      }
       try {
         const feed = await fetchPage(feedUrl, timeLeft);
         const item = findFeedItem(feed.html, url);
+        say(`feed ${feedUrl}: ${feed.html.length} chars, ${item ? "has the post" : "doesn't have the post"}`);
         if (item) return { html: feedItemToPage(item), finalUrl: new URL(item.link), viaFeed: true };
-      } catch (_feedError) {
+      } catch (feedError) {
         // No feed, or blocked too: try the next one, then report the page's error.
+        say(`feed ${feedUrl} failed: ${(feedError as Error).message}`);
       }
     }
     throw error;
@@ -458,7 +467,7 @@ Deno.serve(async (request) => {
     if (!requestedUrl) throw new ImportError("invalid_url", 400, "Paste a full web address starting with http:// or https://.");
 
     const { html, finalUrl, viaFeed } = await fetchPageOrFeed(requestedUrl);
-    if (viaFeed) console.log("recipe-import: page blocked, imported from the site's feed", finalUrl.toString());
+    if (viaFeed) console.log(`recipe-import: imported ${finalUrl} from the site's feed`);
     const sourceUrl = finalUrl.toString();
     const pageTitle = extractMetaContent(html, "og:title") || extractTitle(html) || "Imported recipe";
     const ogImage = parseHttpUrl(extractMetaContent(html, "og:image"))?.toString() || null;
