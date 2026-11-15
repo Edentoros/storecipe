@@ -510,8 +510,9 @@ function createSupabaseServices({ config, state, helpers }) {
   }
 
   // A photo or screenshot of a recipe, as a data: URL.
-  function importRecipeFromImageViaFunction(image, language) {
-    return callRecipeImportFunction({ image, language });
+  // images: data URLs of photos, screenshots or PDFs (up to 5), in order.
+  function importRecipeFromImageViaFunction(images, language) {
+    return callRecipeImportFunction({ images, language });
   }
 
   // Your display name. The profile row normally exists (created at sign-up);

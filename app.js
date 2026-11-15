@@ -1938,7 +1938,7 @@
   let lastImportRequest = {};
 
   // request: {} to import what's in the link box (a link, or recipe text), or
-  // { photo: dataUrl } for a photo or screenshot.
+  // { photos: [dataUrl…], hasPdf } for photos, screenshots or PDFs.
   async function runRecipeImport(request = {}) {
     if (state.isImportingRecipe) return;
 
@@ -1946,9 +1946,9 @@
     let site = "";
     let call;
     const language = state.currentLanguage;
-    if (request.photo) {
+    if (request.photos) {
       kind = "photo";
-      call = () => importRecipeFromImageViaFunction(request.photo, language);
+      call = () => importRecipeFromImageViaFunction(request.photos, language);
     } else {
       const rawInput = recipeImportUrlInput?.value || "";
       const url = extractImportUrl(rawInput);
@@ -1999,7 +1999,13 @@
         importNotice?.clear();
         if (recipeImportUrlInput) recipeImportUrlInput.value = "";
         if (kind !== "url") {
-          showToast(t(kind === "photo" ? "status.importedSavedPhoto" : "status.importedSavedText", { title }), "success", 5000);
+          const savedKey =
+            kind !== "photo"
+              ? "status.importedSavedText"
+              : request.photos.length > 1 || request.hasPdf
+                ? "status.importedSavedFiles"
+                : "status.importedSavedPhoto";
+          showToast(t(savedKey, { title }), "success", 5000);
           return;
         }
         // tidied === false: the AI wasn't available, so this is the site's raw data.
@@ -2023,24 +2029,56 @@
     }
   }
 
-  // ── Import from a photo or screenshot ──────────────────────────────────────
-  // Shrunk in the browser first (like recipe photos), so it uploads quickly.
+  // ── Import from photos, screenshots or PDFs ────────────────────────────────
+  // Up to 5 files at once, read as one recipe (e.g. ingredients in one
+  // screenshot, method in the next). Photos are shrunk in the browser first
+  // (like recipe photos), so they upload quickly; PDFs go as they are. The
+  // limits match the import function's.
+  const IMPORT_MAX_FILES = 5;
   const IMPORT_PHOTO_MAX_BYTES = 2.8 * 1024 * 1024;
+  const IMPORT_PDF_MAX_BYTES = 4 * 1024 * 1024;
+  const IMPORT_MAX_TOTAL_CHARS = 8_000_000;
+  const isPdf = (file) => file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
   const importPhotoInput = document.getElementById("importPhotoInput");
   document.getElementById("importPhotoButton")?.addEventListener("click", () => {
     if (!state.isImportingRecipe) importPhotoInput?.click();
   });
   importPhotoInput?.addEventListener("change", async () => {
-    const file = importPhotoInput.files?.[0];
+    const files = [...(importPhotoInput.files || [])];
     importPhotoInput.value = "";
-    if (!file) return;
+    if (!files.length) return;
+    if (files.length > IMPORT_MAX_FILES) {
+      importNotice?.showError({ code: "too_many_files" });
+      return;
+    }
     try {
-      const shrunk = await shrinkImageForUpload(file);
-      if (!/^image\/(jpeg|png|webp)$/.test(shrunk.type) || shrunk.size > IMPORT_PHOTO_MAX_BYTES) {
-        importNotice?.showError({ code: "invalid_image" });
+      const photos = [];
+      for (const file of files) {
+        if (isPdf(file)) {
+          if (file.size > IMPORT_PDF_MAX_BYTES) {
+            importNotice?.showError({ code: "file_too_big" });
+            return;
+          }
+          // Some phones label a PDF from Files as application/octet-stream.
+          photos.push((await readFileAsDataUrl(file)).replace(/^data:[^;,]*/, "data:application/pdf"));
+          continue;
+        }
+        const shrunk = await shrinkImageForUpload(file);
+        if (!/^image\/(jpeg|png|webp)$/.test(shrunk.type)) {
+          importNotice?.showError({ code: "invalid_image" });
+          return;
+        }
+        if (shrunk.size > IMPORT_PHOTO_MAX_BYTES) {
+          importNotice?.showError({ code: "file_too_big" });
+          return;
+        }
+        photos.push(await readFileAsDataUrl(shrunk));
+      }
+      if (photos.reduce((total, dataUrl) => total + dataUrl.length, 0) > IMPORT_MAX_TOTAL_CHARS) {
+        importNotice?.showError({ code: "file_too_big" });
         return;
       }
-      await runRecipeImport({ photo: await readFileAsDataUrl(shrunk) });
+      await runRecipeImport({ photos, hasPdf: files.some(isPdf) });
     } catch (_error) {
       importNotice?.showError({ code: "invalid_image" });
     }

@@ -1,7 +1,7 @@
 ## recipe-import edge function
 
 Imports a recipe from a web page link, from text the user typed or pasted, or
-from a photo or screenshot, and returns structured fields for the Storecipe
+from photos, screenshots or PDFs, and returns structured fields for the Storecipe
 add-recipe form. The same AI editor and house style apply to all three; text is
 also how the form's "Tidy up" button works.
 
@@ -44,11 +44,16 @@ also how the form's "Tidy up" button works.
    bill. Unlimited users are exempt. Inactive until `sql/abuse-protection.sql`
    has been run.
 
-9. **Text and photos.** `{ text }` (20 to 20,000 characters) or `{ image }` (a
-   JPEG, PNG or WebP `data:` URL, at most 4 MB; the app shrinks photos first)
-   skip the page fetch and go straight to the AI editor, with the prompt
-   adjusted for messy typed text or a photo. Same limits and recording as links,
-   with `text` or `photo` in `source_url`. The result never has a link or photo.
+9. **Text, photos and PDFs.** `{ text }` (20 to 20,000 characters) or
+   `{ images }` (1 to 5 `data:` URLs, in order: JPEG, PNG or WebP photos of at
+   most 4 MB of base64, which the app shrinks first, or PDFs of at most 4 MB;
+   8 MB of base64 in all) skip the page fetch and go straight to the AI editor,
+   with the prompt adjusted for messy typed text or photos. Several files are
+   read as parts of one recipe. PDFs go to OpenAI as file inputs, which read
+   both the text and the page images. A single `{ image }` (older app versions)
+   still works. Same limits and recording as links (one import however many
+   files), with `text` or `photo` in `source_url`. The result never has a link
+   or photo.
 
 What uses up a free import: a successful import, or a page the AI was asked
 about and rejected as not-a-recipe. Sites that block us, bad links and our own
@@ -86,7 +91,7 @@ supabase functions deploy recipe-import
 ### Responses
 
 Request: `POST { "url": "https://…", "language": "en" | "ru" }`, or
-`{ "text": "…", "language": … }`, or `{ "image": "data:image/jpeg;base64,…", "language": … }`.
+`{ "text": "…", "language": … }`, or `{ "images": ["data:image/jpeg;base64,…", "data:application/pdf;base64,…"], "language": … }`.
 
 Success: `{ recipe, source: "ai" | "json-ld", tidied, remaining }` — `remaining` is
 `null` for unlimited users.
@@ -97,7 +102,7 @@ Errors: `{ error, code }` where `code` is one of `unauthenticated`,
 `quota_exceeded`, `invalid_url`, `url_blocked`, `fetch_failed`, `not_html`,
 `no_readable_text`, `not_recipe`, `ai_unavailable`, `ai_failed`,
 `quota_unavailable`, `busy` (site-wide daily cap reached), `invalid_text`,
-`invalid_image`, `invalid_request`,
+`invalid_image`, `too_many_files`, `file_too_big`, `invalid_request`,
 `server_error`.
 
 ### image-proxy

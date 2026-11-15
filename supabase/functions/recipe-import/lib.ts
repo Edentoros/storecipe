@@ -595,9 +595,11 @@ const SOURCE_INTROS: Record<SourceKind, string[]> = {
     "ingredients on one line, all the steps in one paragraph, typos, no amounts for some items."
   ],
   photo: [
-    "You are the recipe editor for a personal recipe-saving app. You receive a photo or screenshot",
-    "that may show a recipe: a chat message, a cookbook page, a handwritten card, a website. Read the",
-    "text in the image carefully, including handwriting."
+    "You are the recipe editor for a personal recipe-saving app. You receive one or more photos,",
+    "screenshots or PDF pages that may show a recipe: a chat message, a cookbook page, a handwritten",
+    "card, a website. Read the text carefully, including handwriting. Several files are parts of the",
+    "same recipe, in order (for example the ingredients in one screenshot and the method in the",
+    "next): combine them into one recipe and don't repeat what appears twice."
   ]
 };
 
@@ -693,11 +695,54 @@ export function buildTextMessage(text: string): string {
 // A photo sent by the browser as a data URL. The app shrinks photos before
 // sending, so 4 MB of base64 (about 3 MB of image) is plenty.
 export const MAX_IMAGE_DATA_URL_CHARS = 4_000_000;
+// PDFs go to the AI as they are: up to 4 MB (about 5.5 MB as base64).
+export const MAX_PDF_DATA_URL_CHARS = 5_600_000;
+// Up to 5 photos, screenshots or PDFs in one import, and 8 MB of base64 in all.
+export const MAX_UPLOAD_FILES = 5;
+export const MAX_UPLOAD_TOTAL_CHARS = 8_000_000;
+
+const BASE64 = "[A-Za-z0-9+/]+={0,2}";
 
 export function parseImageDataUrl(value: unknown): string | null {
   const text = String(value ?? "");
   if (text.length > MAX_IMAGE_DATA_URL_CHARS) return null;
-  return /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(text) ? text : null;
+  return new RegExp(`^data:image\\/(?:jpeg|png|webp);base64,${BASE64}$`).test(text) ? text : null;
+}
+
+export function parsePdfDataUrl(value: unknown): string | null {
+  const text = String(value ?? "");
+  if (text.length > MAX_PDF_DATA_URL_CHARS) return null;
+  return new RegExp(`^data:application\\/pdf;base64,${BASE64}$`).test(text) ? text : null;
+}
+
+export type Upload = { type: "image" | "pdf"; dataUrl: string };
+
+/**
+ * The files of a photo import: `images` (a list of data URLs, photos or
+ * PDFs) or, from older app versions, a single `image`. An error code when
+ * they can't be used.
+ */
+export function parseUploads(body: Record<string, unknown>): { files: Upload[] } | { error: string } {
+  const list = Array.isArray(body.images) ? body.images : body.image !== undefined ? [body.image] : [];
+  if (!list.length) return { error: "invalid_image" };
+  if (list.length > MAX_UPLOAD_FILES) return { error: "too_many_files" };
+  if (list.reduce((total: number, item) => total + String(item ?? "").length, 0) > MAX_UPLOAD_TOTAL_CHARS) {
+    return { error: "file_too_big" };
+  }
+  const files: Upload[] = [];
+  for (const item of list) {
+    const text = String(item ?? "");
+    if (text.startsWith("data:application/pdf")) {
+      const pdf = parsePdfDataUrl(text);
+      if (!pdf) return { error: text.length > MAX_PDF_DATA_URL_CHARS ? "file_too_big" : "invalid_image" };
+      files.push({ type: "pdf", dataUrl: pdf });
+    } else {
+      const image = parseImageDataUrl(text);
+      if (!image) return { error: text.length > MAX_IMAGE_DATA_URL_CHARS ? "file_too_big" : "invalid_image" };
+      files.push({ type: "image", dataUrl: image });
+    }
+  }
+  return { files };
 }
 
 export function buildUserMessage(

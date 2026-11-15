@@ -17,13 +17,13 @@ import {
   looksLikeRecipe,
   normalizeAiRecipe,
   parseHttpUrl,
-  parseImageDataUrl,
+  parseUploads,
   recipeFromJsonLd,
   resolveLanguage,
   summariseStructuredRecipe,
   wordPressFeedUrls,
   RECIPE_JSON_SCHEMA,
-  MAX_IMAGE_DATA_URL_CHARS,
+  MAX_UPLOAD_TOTAL_CHARS,
   type ImportedRecipe,
   type SourceKind
 } from "./lib.ts";
@@ -387,13 +387,25 @@ async function importWithoutPage(
   const language = resolveLanguage(body?.language);
   let kind: SourceKind;
   let userContent: UserContent;
-  if (body.image !== undefined) {
-    const image = parseImageDataUrl(body.image);
-    if (!image) throw new ImportError("invalid_image", 400, "Send a JPEG, PNG or WebP photo.");
+  if (body.images !== undefined || body.image !== undefined) {
+    const uploads = parseUploads(body);
+    if ("error" in uploads) {
+      const messages: Record<string, string> = {
+        too_many_files: "Send up to 5 photos or files at a time.",
+        file_too_big: "That's too big: up to 4 MB for a PDF, and about 8 MB for everything together.",
+        invalid_image: "Send JPEG, PNG or WebP photos, or a PDF."
+      };
+      throw new ImportError(uploads.error, 400, messages[uploads.error]);
+    }
     kind = "photo";
+    const { files } = uploads;
     userContent = [
-      { type: "text", text: "The photo:" },
-      { type: "image_url", image_url: { url: image, detail: "high" } }
+      { type: "text", text: files.length > 1 ? `The recipe, in ${files.length} parts, in order:` : "The recipe:" },
+      ...files.map((file, index) =>
+        file.type === "pdf"
+          ? { type: "file", file: { filename: `recipe-${index + 1}.pdf`, file_data: file.dataUrl } }
+          : { type: "image_url", image_url: { url: file.dataUrl, detail: "high" } }
+      )
     ];
   } else {
     const text = cleanRecipeText(body.text);
@@ -430,9 +442,9 @@ Deno.serve(async (request) => {
     const unlimited = UNLIMITED_USER_IDS.has(caller.id);
 
     const rawBody = await request.text();
-    // Photos arrive as data URLs; everything else is a few hundred bytes.
-    if (rawBody.length > MAX_IMAGE_DATA_URL_CHARS + 10_000) {
-      throw new ImportError("invalid_image", 413, "That photo is too large. Try a smaller one.");
+    // Photos and PDFs arrive as data URLs; everything else is a few hundred bytes.
+    if (rawBody.length > MAX_UPLOAD_TOTAL_CHARS + 10_000) {
+      throw new ImportError("file_too_big", 413, "That's too big: up to 4 MB for a PDF, and about 8 MB for everything together.");
     }
     const body = (() => {
       try {
@@ -459,7 +471,7 @@ Deno.serve(async (request) => {
     if (!unlimited) await assertUnderSiteDailyLimit(caller);
 
     // Typed/pasted text and photos: no page to fetch, straight to the AI editor.
-    if (body?.text !== undefined || body?.image !== undefined) {
+    if (body?.text !== undefined || body?.image !== undefined || body?.images !== undefined) {
       return await importWithoutPage(caller, body, used, unlimited);
     }
 

@@ -160,9 +160,46 @@ test("a photo is sent to the AI as an image", async () => {
   assert.equal(imports[0].source_url, "photo");
 
   const request = aiRequests[0];
-  assert.match(request.messages[0].content, /photo or screenshot/);
+  assert.match(request.messages[0].content, /photos,\s+screenshots or PDF pages/);
   const image = request.messages[1].content.find((part) => part.type === "image_url");
   assert.equal(image.image_url.url, PHOTO);
+});
+
+const PDF = "data:application/pdf;base64," + "JVBERi0x".repeat(50);
+
+test("several screenshots and a PDF go to the AI together, as one import", async () => {
+  const second = "data:image/png;base64," + "B".repeat(400);
+  const { status } = await call({ images: [PHOTO, second, PDF], language: "en" });
+  assert.equal(status, 200);
+  assert.equal(imports.length, 1);
+  assert.equal(imports[0].source_url, "photo");
+  const parts = aiRequests[0].messages[1].content;
+  assert.match(parts[0].text, /3 parts, in order/);
+  assert.deepEqual(parts.slice(1).map((part) => part.type), ["image_url", "image_url", "file"]);
+  assert.equal(parts[2].image_url.url, second);
+  assert.equal(parts[3].file.file_data, PDF);
+  assert.match(parts[3].file.filename, /\.pdf$/);
+  assert.match(aiRequests[0].messages[0].content, /combine them into one recipe/);
+});
+
+test("a PDF on its own works too", async () => {
+  const { status } = await call({ images: [PDF], language: "en" });
+  assert.equal(status, 200);
+  assert.equal(aiRequests[0].messages[1].content[1].type, "file");
+});
+
+test("more than 5 files, or files that are too big, are refused before the AI", async () => {
+  let res = await call({ images: Array(6).fill(PHOTO), language: "en" });
+  assert.equal(res.status, 400);
+  assert.equal(res.data.code, "too_many_files");
+  res = await call({ images: ["data:application/pdf;base64," + "A".repeat(5_700_000)], language: "en" });
+  assert.equal(res.data.code, "file_too_big");
+  res = await call({ images: [PHOTO, "data:application/zip;base64,UEsDBA=="], language: "en" });
+  assert.equal(res.data.code, "invalid_image");
+  res = await call({ images: [], language: "en" });
+  assert.equal(res.data.code, "invalid_image");
+  assert.equal(aiRequests.length, 0);
+  assert.equal(imports.length, 0);
 });
 
 test("text that isn't a recipe is rejected and still uses an import", async () => {
